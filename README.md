@@ -1,55 +1,15 @@
 # ttyplot
 a realtime plotting utility for text mode consoles and terminals with data input from stdin / pipe
 
+This version is forked from https://github.com/tenox7/ttyplot
+
 takes data from standard input / unix pipeline, most commonly some tool like *ping, snmpget, netstat, ip link, ifconfig, sar, vmstat*, etc. and plots in text mode on a terminal in real time, for example a simple **ping**:
 
 ![ttyplot ping](ttyplot-ping.png)
 
-&nbsp;
-&nbsp;
-
-
 supports rate calculation for counters and up to two graphs on a single display using reverse video for second line, for example **snmpget**, **ip link**, **rrdtool**, etc:
 
 ![ttyplot snmp](ttyplot-snmp.png)
-
-
-&nbsp;
-&nbsp;
-
-## get
-
-### ubuntu
-
-```
-snap install ttyplot
-```
-
-### debian
-
-maybe
-
-```
-apt install ttyplot
-```
-
-[package](https://packages.debian.org/sid/ttyplot) | [tracker](https://tracker.debian.org/pkg/ttyplot)
-
-or
-
-```
-curl -LO https://github.com/tenox7/ttyplot/releases/download/1.4/ttyplot_1.4-1.deb && sudo apt install ./ttyplot_1.4-1.deb
-```
-
-### macOS
-
-```
-brew install ttyplot
-```
-
-### misc
-
-for other platforms see [releases tab](https://github.com/tenox7/ttyplot/releases)
 
 ## examples
 
