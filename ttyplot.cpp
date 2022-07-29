@@ -83,12 +83,13 @@ void draw_labels(const int plotheight,
                  const double min,
                  const char *unit)
 {
-  // \todo bold
+  attron(A_BOLD);
   mvprintw(0,              1, "%.1f %s", max,             unit);
   mvprintw(plotheight/4,   1, "%.1f %s", min/4 + max*3/4, unit);
   mvprintw(plotheight/2,   1, "%.1f %s", min/2 + max/2,   unit);
   mvprintw(plotheight*3/4, 1, "%.1f %s", min*3/4 + max/4, unit);
   mvprintw(plotheight,     1, "%.1f %s", min,             unit);
+  attroff(A_BOLD);
 }
 
 void draw_line(const int x,
@@ -442,8 +443,9 @@ int main(int argc, char *argv[]) {
         draw_labels(plotheight, global_max, global_min, unit);
         if (title)
         {
-          // \todo bold
+          attron(A_BOLD);
           mvprintw(0, (screenwidth/2)-(strlen(title)/2)-1, " %s ", title);
+          attroff(A_BOLD);
         }
 
         move(0,0);
