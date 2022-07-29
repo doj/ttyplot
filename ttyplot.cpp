@@ -86,23 +86,27 @@ void getminmax(const int pw,
     *avg=tot/i;
 }
 
-void draw_axes(const int h,
-               const int ph,
-               const int pw,
+void draw_axes(const int screenheight,
+               const int plotheight,
+               const int plotwidth,
                const double max,
                const double min,
                const char *unit)
 {
-    mvhline(h-3, 2, T_HLINE, pw);
-    mvvline(2, 2, T_VLINE, ph);
-    mvprintw(1, 4, "%.1f %s", max, unit);
-    mvprintw((ph/4)+1, 4, "%.1f %s", min/4 + max*3/4, unit);
-    mvprintw((ph/2)+1, 4, "%.1f %s", min/2 + max/2, unit);
-    mvprintw((ph*3/4)+1, 4, "%.1f %s", min*3/4 + max/4, unit);
-    mvprintw(ph+1, 4, "%.1f %s", min, unit);
-    mvaddch(h-3, 2+pw, T_RARR);
-    mvaddch(1, 2, T_UARR);
-    mvaddch(h-3, 2, T_LLCR);
+  // x axis
+  mvhline(screenheight-3, 1, T_HLINE, plotwidth-1);
+  mvaddch(screenheight-3, plotwidth, T_RARR);
+  // y axis
+  mvvline(1, 0, T_VLINE, plotheight-1);
+  mvaddch(0, 0, T_UARR);
+  // corner
+  mvaddch(screenheight-3, 0, T_LLCR);
+  // values
+  mvprintw(0,              1, "%.1f %s", max,             unit);
+  mvprintw(plotheight/4,   1, "%.1f %s", min/4 + max*3/4, unit);
+  mvprintw(plotheight/2,   1, "%.1f %s", min/2 + max/2,   unit);
+  mvprintw(plotheight*3/4, 1, "%.1f %s", min*3/4 + max/4, unit);
+  mvprintw(plotheight,     1, "%.1f %s", min,             unit);
 }
 
 void draw_line(const int x,
@@ -113,7 +117,7 @@ void draw_line(const int x,
     if (y1 == INT_MIN ||
         y1 == y2)
     {
-      mvaddch(y2+1, x, pc);
+      mvaddch(y2, x, pc);
       return;
     }
     if (y1 > y2)
@@ -121,12 +125,12 @@ void draw_line(const int x,
       std::swap(y1, y2);
     }
     assert(y1 <= y2);
-    mvvline(y1+1, x, pc, y2-y1);
+    mvvline(y1, x, pc, y2-y1);
 }
 
 /**
- * @param ph plot height
- * @param pw plot width
+ * @param plotheight plot height
+ * @param plotwidth plot width
  * @param v values
  * @param max soft maximum
  * @param min hard minimum
@@ -136,8 +140,8 @@ void draw_line(const int x,
  * @param lce error character for min
  * @param hm hard maximum
  */
-void plot_values(const int ph,
-                 const int pw,
+void plot_values(const int plotheight,
+                 const int plotwidth,
                  const double *v,
                  double max,
                  const double min,
@@ -148,7 +152,7 @@ void plot_values(const int ph,
                  const double hm)
 {
     // x screen coordinate
-    int x=3;
+    int x = 0;
     // y screen coordinate of previous row
     int lasty = INT_MIN;
     max-=min;
@@ -157,11 +161,11 @@ void plot_values(const int ph,
     if (v[i] == DOUBLE_MIN) {                                          \
       continue;                                                         \
     }                                                                   \
-    const int y = (v[i]>=hm) ? ph : (v[i]<=min) ? 0 : (int)(((v[i]-min)/max)*(double)ph); \
+    const int y = (v[i]>=hm) ? plotheight : (v[i]<=min) ? 0 : (int)(((v[i]-min)/max)*(double)plotheight); \
     draw_line(x++, lasty, y, (v[i]>hm)  ? hce : (v[i]<min)  ? lce : pc); \
     lasty = y;
 
-    for(int i = n+1; i < pw; ++i)
+    for(int i = n+1; i < plotwidth; ++i)
     {
       D;
     }
@@ -203,7 +207,7 @@ int main(int argc, char *argv[]) {
     int n=0;
     int r=0;
     int v=0;
-    int width=0, height=0;
+    int screenwidth=0, screenheight=0;
     int plotwidth=0, plotheight=0;
     time_t t1,t2,td;
     struct tm *lt;
@@ -215,8 +219,8 @@ int main(int argc, char *argv[]) {
     double softmin=DOUBLE_MAX;
     double hardmax=DOUBLE_MAX;
     double hardmin = DOUBLE_MIN;
-    char title[256]=".: ttyplot :.";
-    char unit[64]={0};
+    const char *title = NULL;
+    const char *unit = "";
     char ls[256]={0};
     int rate=0;
     int two=0;
@@ -258,10 +262,10 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 't':
-                snprintf(title, sizeof(title), "%s", optarg);
+              title = optarg;
                 break;
             case 'u':
-                snprintf(unit, sizeof(unit), "%s", optarg);
+              unit = optarg;
                 break;
             case '?':
                 usage();
@@ -289,12 +293,12 @@ int main(int argc, char *argv[]) {
     erase();
     refresh();
     #ifdef NOGETMAXYX
-    height=LINES;
-    width=COLS;
+    screenheight=LINES;
+    screenwidth=COLS;
     #else
-    getmaxyx(stdscr, height, width);
+    getmaxyx(stdscr, screenheight, screenwidth);
     #endif
-    mvprintw(height/2, (width/2)-14, "waiting for data from stdin");
+    mvprintw(screenheight/2, (screenwidth/2)-14, "waiting for data from stdin");
     refresh();
 
     while(1) {
@@ -350,13 +354,13 @@ int main(int argc, char *argv[]) {
         refresh();
         #endif
         #ifdef NOGETMAXYX
-        height=LINES;
-        width=COLS;
+        screenheight=LINES;
+        screenwidth=COLS;
         #else
-        getmaxyx(stdscr, height, width);
+        getmaxyx(stdscr, screenheight, screenwidth);
         #endif
-        plotheight=height-4;
-        plotwidth=width-4;
+        plotheight=screenheight-3;
+        plotwidth=screenwidth;
         if(plotwidth >= (int)(values_len - 1))
         {
           plotwidth = values_len - 1u;
@@ -394,7 +398,7 @@ int main(int argc, char *argv[]) {
         if(hardmin != DOUBLE_MIN)
           min = hardmin;
 
-        mvprintw(height-1, width-sizeof(verstring)/sizeof(char), verstring);
+        mvprintw(screenheight-1, screenwidth-sizeof(verstring)/sizeof(char), verstring);
 
         lt=localtime(&t1);
         #ifdef __sun
@@ -402,20 +406,21 @@ int main(int argc, char *argv[]) {
         #else
         asctime_r(lt, ls);
         #endif
-        mvprintw(height-2, width-strlen(ls), "%s", ls);
+        mvprintw(screenheight-2, screenwidth-strlen(ls), "%s", ls);
 
-        mvaddch(height-2, 5, plotchar1);
-        mvprintw(height-2, 7, "last=%.1f min=%.1f max=%.1f avg=%.1f %s ",  values1[n], min1, max1, avg1, unit);
+        mvprintw(screenheight-2, 5, "%c last=%.1f min=%.1f max=%.1f avg=%.1f %s", plotchar1, values1[n], min1, max1, avg1, unit);
         if(rate)
             printw(" interval=%llds", (long long int)td);
 
         if(two) {
-            mvaddch(height-1, 5, ' ');
-            mvprintw(height-1, 7, "last=%.1f min=%.1f max=%.1f avg=%.1f %s   ",  values2[n], min2, max2, avg2, unit);
+            mvprintw(screenheight-1, 5, "%c last=%.1f min=%.1f max=%.1f avg=%.1f %s", plotchar2, values2[n], min2, max2, avg2, unit);
         }
 
-        mvprintw(0, (width/2)-(strlen(title)/2), "%s", title);
-        draw_axes(height, plotheight, plotwidth, max, min, unit);
+        if (title)
+        {
+          mvprintw(0, (screenwidth/2)-(strlen(title)/2), "%s", title);
+        }
+        draw_axes(screenheight, plotheight, plotwidth, max, min, unit);
         plot_values(plotheight, plotwidth, values1, max, min, n, plotchar1, max_errchar, min_errchar, hardmax);
         if (two)
         {
