@@ -1,9 +1,10 @@
-//
-// ttyplot: a realtime plotting utility for terminal with data input from stdin
-// Copyright (c) 2018 by Antoni Sawicki
-// Copyright (c) 2019 by Google LLC
-// Apache License 2.0
-//
+/** @file
+ * ttyplot: a realtime plotting utility for terminal with data input from stdin
+ * Copyright (c) 2018 by Antoni Sawicki
+ * Copyright (c) 2019 by Google LLC
+ * Copyright (c) 2022 by Dirk Jagdmann <doj@cubic.org>
+ * Apache License 2.0
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +19,7 @@
 #include <err.h>
 #endif
 
-#define verstring "github.com/tenox7/ttyplot 1.4"
+#define verstring "https://github.com/doj/ttyplot"
 
 #ifdef NOACS
 #define T_HLINE '-'
@@ -49,7 +50,7 @@ void usage() {
             "  -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed\n"
             "  -t title of the plot\n"
             "  -u unit displayed beside vertical bar\n\n");
-    exit(0);
+    exit(EXIT_FAILURE);
 }
 
 void getminmax(int pw, double *values, double *min, double *max, double *avg, int v) {
@@ -119,18 +120,20 @@ void plot_values(int ph, int pw, double *v1, double *v2, double max, double min,
                   hce, lce);
 }
 
-void resize() {
+void resize(int sig) {
+    (void) sig;
     endwin();
     refresh();
 }
 
-void finish() {
+void finish(int sig) {
+    (void) sig;
     curs_set(FALSE);
     echo();
     refresh();
     endwin();
     delscreen(sp);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]) {
@@ -218,8 +221,8 @@ int main(int argc, char *argv[]) {
     time(&t1);
     noecho();
     curs_set(FALSE);
-    signal(SIGWINCH, (void*)resize);
-    signal(SIGINT, (void*)finish);
+    signal(SIGWINCH, resize);
+    signal(SIGINT, finish);
 
     erase();
     refresh();
@@ -354,5 +357,19 @@ int main(int argc, char *argv[]) {
 
     endwin();
     delscreen(sp);
-    return 0;
+    return EXIT_SUCCESS;
 }
+
+//
+// Editor modelines  -  https://www.wireshark.org/tools/modelines.html
+//
+// Local variables:
+// c-basic-offset: 4
+// tab-width: 8
+// indent-tabs-mode: nil
+// c-default-style: "linux"
+// End:
+//
+// vi: set shiftwidth=4 tabstop=8 expandtab:
+// :indentSize=4:tabSize=8:noTabs=true:
+//

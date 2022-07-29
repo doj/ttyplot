@@ -1,6 +1,6 @@
 PREFIX    ?= $(DESTDIR)/usr/local
 MANPREFIX ?= $(PREFIX)/man
-CFLAGS += -Wall -Wextra
+CXXFLAGS  += -Wall -Wextra -O2
 LDLIBS += -lcurses
 
 all: ttyplot
