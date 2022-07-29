@@ -19,6 +19,10 @@
 #include <err.h>
 #endif
 
+#include <utility>
+#include <cassert>
+#include <climits>
+
 #define verstring "https://github.com/doj/ttyplot"
 
 #define DOUBLE_MIN (-FLT_MAX)
@@ -102,71 +106,61 @@ void draw_axes(const int h,
 }
 
 void draw_line(const int x,
-               const int ph,
-               const int l1,
-               const int l2,
-               const char c1,
-               const char c2,
-               const char hce,
-               const char lce)
+               int y1,
+               int y2,
+               const char pc)
 {
-#if 0
-    if(l1 > l2) {
-        mvvline(ph+1-l1, x, c1, l1-l2 );
-        mvvline(ph+1-l2, x, c2|A_REVERSE, l2 );
-    } else if(l1 < l2) {
-        mvvline(ph+1-l2, x, (c2==hce || c2==lce) ? c2|A_REVERSE : ' '|A_REVERSE,  l2-l1 );
-        mvvline(ph+1-l1, x, c1|A_REVERSE, l1 );
-    } else {
-        mvvline(ph+1-l2, x, c2|A_REVERSE, l2 );
+    if (y1 == INT_MIN ||
+        y1 == y2)
+    {
+      mvaddch(y2+1, x, pc);
+      return;
     }
-#else
-    mvaddch(ph+1-l1,x,c1);
-    mvaddch(ph+1-l2,x,c2);
-#endif
+    if (y1 > y2)
+    {
+      std::swap(y1, y2);
+    }
+    assert(y1 <= y2);
+    mvvline(y1+1, x, pc, y2-y1);
 }
 
 /**
  * @param ph plot height
  * @param pw plot width
- * @param v1 values
- * @param v2 values
+ * @param v values
  * @param max soft maximum
  * @param min hard minimum
- * @param n highest index of valid values in @p v1 and @p v2
- * @param pc1 plot character for @p v1
- * @param pc2 plot character for @p v2
+ * @param n highest index of valid values in @p v
+ * @param pc plot character
  * @param hce error character for max
  * @param lce error character for min
  * @param hm hard maximum
  */
 void plot_values(const int ph,
                  const int pw,
-                 const double *v1,
-                 const double *v2,
+                 const double *v,
                  double max,
                  const double min,
                  const int n,
-                 const char pc1,
-                 const char pc2,
+                 const char pc,
                  const char hce,
                  const char lce,
                  const double hm)
 {
     // x screen coordinate
     int x=3;
+    // y screen coordinate of previous row
+    int lasty = INT_MIN;
     max-=min;
 
 #define D                                                               \
-    if (v1[i] == DOUBLE_MIN) {                                          \
+    if (v[i] == DOUBLE_MIN) {                                          \
       continue;                                                         \
     }                                                                   \
-    draw_line(x++, ph,                                                  \
-      (v1[i]>=hm) ? ph  : (v1[i]<=min) ?  0  : (int)(((v1[i]-min)/max)*(double)ph), \
-      (v2[i]>=hm) ? ph  : (v2[i]<=min) ?  0  : (int)(((v2[i]-min)/max)*(double)ph), \
-      (v1[i]>hm)  ? hce : (v1[i]<min)  ? lce : pc1, \
-      (v2[i]>hm)  ? hce : (v2[i]<min)  ? lce : pc2, \
-      hce, lce)
+    const int y = (v[i]>=hm) ? ph : (v[i]<=min) ? 0 : (int)(((v[i]-min)/max)*(double)ph); \
+    draw_line(x++, lasty, y, (v[i]>hm)  ? hce : (v[i]<min)  ? lce : pc); \
+    lasty = y;
+
     for(int i = n+1; i < pw; ++i)
     {
       D;
@@ -422,7 +416,11 @@ int main(int argc, char *argv[]) {
 
         mvprintw(0, (width/2)-(strlen(title)/2), "%s", title);
         draw_axes(height, plotheight, plotwidth, max, min, unit);
-        plot_values(plotheight, plotwidth, values1, values2, max, min, n, plotchar1, plotchar2, max_errchar, min_errchar, hardmax);
+        plot_values(plotheight, plotwidth, values1, max, min, n, plotchar1, max_errchar, min_errchar, hardmax);
+        if (two)
+        {
+          plot_values(plotheight, plotwidth, values2, max, min, n, plotchar2, max_errchar, min_errchar, hardmax);
+        }
 
         if(n<(int)((plotwidth)-1))
             n++;
