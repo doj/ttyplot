@@ -19,6 +19,6 @@ clean:
 	$(RM) -f ttyplot *~
 
 test:	all
-	perl test.pl | ./ttyplot
+	perl test.pl | ./ttyplot -2
 
 .PHONY: all clean install uninstall test
