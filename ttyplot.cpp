@@ -39,6 +39,8 @@
 
 #define INT_UNINIT INT_MIN
 
+#define CHAR_REVERSE ' '
+
 #ifdef NOACS
 #define T_HLINE '-'
 #define T_VLINE '|'
@@ -135,7 +137,14 @@ draw_line(const int x,
   }
   if (y1 == y2)
   {
-    mvaddch(y2, x, pc);
+    if (pc == CHAR_REVERSE)
+    {
+      mvchgat(y1, x, 1, A_REVERSE, COLOR_PAIR(0), NULL);
+    }
+    else
+    {
+      mvaddch(y1, x, pc);
+    }
     return;
   }
   if (y1 > y2)
@@ -143,7 +152,17 @@ draw_line(const int x,
     std::swap(y1, y2);
   }
   assert(y1 < y2);
-  mvvline(y1, x, pc, y2-y1);
+  if (pc == CHAR_REVERSE)
+  {
+    for(; y1 < y2; ++y1)
+    {
+      mvchgat(y1, x, 1, A_REVERSE, COLOR_PAIR(0), NULL);
+    }
+  }
+  else
+  {
+    mvvline(y1, x, pc, y2-y1);
+  }
 }
 
 volatile bool sigwinch_received = false;
@@ -325,6 +344,8 @@ struct values_t
       else
       {
         y = plotheight - static_cast<int>((val-global_min) / mymax * plotheight) - 1;
+        if (y < 0)
+          y = 0;
         pc = name[0];
       }
       if (bars)
@@ -339,7 +360,17 @@ struct values_t
       lasty = y;
     }
 
-    mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), last(), min, max, avg, unit);
+    if (name[0] == CHAR_REVERSE)
+    {
+      attron(A_REVERSE);
+      mvaddch(plotheight + idx + 1, 0, CHAR_REVERSE);
+      attroff(A_REVERSE);
+    }
+    else
+    {
+      mvprintw(plotheight + idx + 1, 0, "%s", name.c_str());
+    }
+    printw(" last=%.1f min=%.1f max=%.1f avg=%.1f%s", last(), min, max, avg, unit);
   }
 
   /// @return last valid value.
@@ -507,8 +538,8 @@ main(int argc, char *argv[])
         break;
       case '2':
         op_mode = OperatingMode::TWO;
-	values[one_str].name = '1';
-	values[two_str].name = '2';
+	values[one_str].name = '|';
+	values[two_str].name = CHAR_REVERSE;
         break;
       case 'k':
         op_mode = OperatingMode::KV;
@@ -820,15 +851,18 @@ main(int argc, char *argv[])
       }
       else
       {
-        // check if the previous data point used the same plotchar
-        const char plotchar = p.first[0];
-        if (plotchar == last_plotchar)
+        if (op_mode == OperatingMode::KV)
         {
-          // set a font attribute to better distinguish the same plotchars
-          int arr[4] = {A_BOLD, A_STANDOUT, A_DIM, A_REVERSE};
-          attr |= arr[idx & 3];
+          // check if the previous data point used the same plotchar
+          const char plotchar = p.first[0];
+          if (plotchar == last_plotchar)
+          {
+            // set a font attribute to better distinguish the same plotchars
+            int arr[4] = {A_BOLD, A_STANDOUT, A_DIM, A_REVERSE};
+            attr |= arr[idx & 3];
+          }
+          last_plotchar = plotchar;
         }
-        last_plotchar = plotchar;
       }
 
       attron(attr);
