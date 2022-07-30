@@ -108,6 +108,42 @@ draw_axes(const int plotheight, const int plotwidth)
   mvaddch(plotheight, 0, T_LLCR);
 }
 
+std::string
+printValue(const double d, const char *unit)
+{
+  std::string s;
+  if (d < +0.01 &&
+      d > -0.01)
+  {
+    s = "0";
+  }
+  else
+  {
+    char buf[16];
+    int len = snprintf(buf, sizeof(buf), "%.2f", d);
+    s.assign(buf, len);
+    auto pos = s.find('.');
+    if (pos != std::string::npos)
+    {
+      while(s.back() == '0')
+      {
+        s.pop_back();
+      }
+      if (s.back() == '.')
+      {
+        s.pop_back();
+      }
+    }
+  }
+
+  if (unit)
+  {
+    s += ' ';
+    s += unit;
+  }
+  return s;
+}
+
 void
 draw_labels(const int plotheight,
             const double max,
@@ -115,11 +151,11 @@ draw_labels(const int plotheight,
             const char *unit)
 {
   attron(A_BOLD);
-  mvprintw(0,              1, "%.1f%s", max,             unit);
-  mvprintw(plotheight/4,   1, "%.1f%s", min/4 + max*3/4, unit);
-  mvprintw(plotheight/2,   1, "%.1f%s", min/2 + max/2,   unit);
-  mvprintw(plotheight*3/4, 1, "%.1f%s", min*3/4 + max/4, unit);
-  mvprintw(plotheight-1,   1, "%.1f%s", min,             unit);
+  mvprintw(0,              1, "%s", printValue(max,             unit).c_str());
+  mvprintw(plotheight/4,   1, "%s", printValue(min/4 + max*3/4, unit).c_str());
+  mvprintw(plotheight/2,   1, "%s", printValue(min/2 + max/2,   unit).c_str());
+  mvprintw(plotheight*3/4, 1, "%s", printValue(min*3/4 + max/4, unit).c_str());
+  mvprintw(plotheight-1,   1, "%s", printValue(min,             unit).c_str());
   attroff(A_BOLD);
 }
 
@@ -289,8 +325,7 @@ struct values_t
             const double global_min,
             const char max_errchar,
             const char min_errchar,
-            const double hardmax,
-            const char *unit) const
+            const double hardmax) const
   {
     if (vec.empty())
     {
@@ -339,7 +374,7 @@ struct values_t
       lasty = y;
     }
 
-    mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), last(), min, max, avg, unit);
+    mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f", name.c_str(), last(), min, max, avg);
   }
 
   /// @return last valid value.
@@ -486,7 +521,7 @@ main(int argc, char *argv[])
   double hardmax=DOUBLE_MAX;
   double hardmin = DOUBLE_MIN;
   const char *title = NULL;
-  std::string unit;
+  const char *unit = NULL;
   std::string color_str;
   bool rate = false;
   bool bars = false;
@@ -554,8 +589,7 @@ main(int argc, char *argv[])
         title = optarg;
         break;
       case 'u':
-        unit = " ";
-        unit += optarg;
+        unit = optarg;
         break;
       case '?':
         usage();
@@ -832,13 +866,13 @@ main(int argc, char *argv[])
       }
 
       attron(attr);
-      p.second.plot(idx, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit.c_str());
+      p.second.plot(idx, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax);
       attroff(attr);
 
       ++idx;
     }
 
-    draw_labels(plotheight, global_max, global_min, unit.c_str());
+    draw_labels(plotheight, global_max, global_min, unit);
     if (title)
     {
       attron(A_BOLD);
