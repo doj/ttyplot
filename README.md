@@ -30,7 +30,7 @@ sar -r 1 | perl -lane 'BEGIN{$|=1} print "@F[5]"' | ttyplot -s 100 -t "memory us
 
 ### memory usage on macOS
 ```
-vm_stat 1 | awk '{ print int($2)*4096/1024^3; fflush(); }' | ttyplot -t "MacOS Memory Usage" -u GB
+vm_stat 1 | perl -e '$|=1;<>;<>;while(<>){@_=split(/\s+/);print " ".($_[2]*4096/1024/1024/1024)}' | ttyplot -M 0 -t "MacOS Memory Usage" -u GiB
 ```
 
 ### number of processes in running and io blocked state
@@ -108,7 +108,7 @@ iostat -xmy 1 nvme0n1 | stdbuf -o0 tr -s " " | stdbuf -o0 cut -d " " -f 4,5 | tt
 ```
 
 ## rate calculator for counters
-`ttyplot` also supports *counter* style metrics, calculating *rate* by measured time difference between samples
+`ttyplot` also supports *counter* style metrics, calculating *rate* by measured time difference between samples.
 
 ### snmp network throughput for an interface using snmpget
 ```
@@ -195,4 +195,5 @@ press `ctrl^j` to re-set
 License: Apache 2.0
 Copyright (c) 2013-2018 Antoni Sawicki
 Copyright (c) 2019-2021 Google LLC
+Copyright (c) 2022 by Dirk Jagdmann <doj@cubic.org>
 ```

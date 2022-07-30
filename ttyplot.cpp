@@ -236,7 +236,7 @@ struct values_t
     // x screen coordinate
     int x = 0;
     // y screen coordinate of previous row
-    int lasty = INT_MIN;
+    int lasty;
     const double mymax = global_max - global_min;
 
     for(const auto val : vec)
@@ -257,6 +257,10 @@ struct values_t
       {
         y = plotheight - static_cast<int>((val-global_min) / mymax * plotheight) - 1;
         pc = name[0];
+      }
+      if (x == 0)
+      {
+        lasty = y;
       }
       draw_line(x++, lasty, y, pc);
       lasty = y;
