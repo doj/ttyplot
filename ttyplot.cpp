@@ -15,6 +15,7 @@
 #include <curses.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <execinfo.h>
 
 #ifdef __OpenBSD__
 #include <err.h>
@@ -48,6 +49,21 @@
 #define T_UARR ACS_UARROW
 #define T_LLCR ACS_LLCORNER
 #endif
+
+const char *debug_fn = "/tmp/ttyplot.txt";
+
+void
+debug(const char *fmt, ...)
+{
+  auto f = fopen(debug_fn, "a");
+  if (! f)
+    return;
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(f, fmt, ap);
+  va_end(ap);
+  fclose(f);
+}
 
 /* global because we need it accessible in the signal handler */
 SCREEN *sp;
@@ -142,6 +158,14 @@ finish(int sig)
   refresh();
   endwin();
   delscreen(sp);
+  if (sig == SIGSEGV)
+  {
+    void* array[50];
+    const int frames = backtrace(array, 50);
+    fprintf(stderr, "\nprocess received SIGSEGV\n");
+    backtrace_symbols_fd(array, frames, 1);
+    exit(EXIT_FAILURE);
+  }
   exit(EXIT_SUCCESS);
 }
 
@@ -154,6 +178,7 @@ struct values_t
   double avg;
   std::string name;
   bool bars;
+  static size_t max_size;
 
   void init(std::string s)
   {
@@ -161,14 +186,31 @@ struct values_t
     name = std::move(s);
   }
 
-  void push_back(const double v, const size_t plotwidth, const bool b)
+  void push_back(const double cval, const size_t plotwidth, const bool b)
   {
     bars = b;
-    vec.push_back(v);
+    // if this vector contains less elements than the largest other vector,
+    // resize this vector to the max size.
+    if (max_size > 0 &&
+        vec.size() < max_size - 1u)
+    {
+      vec.resize(max_size - 1u);
+    }
+    // add the current value
+    vec.push_back(cval);
+    // remove first value if we store more than plotwidth
     if (vec.size() > plotwidth)
+    {
       vec.pop_front();
+    }
+    // update max_size
+    if (vec.size() > max_size)
+    {
+      max_size = vec.size();
+    }
   }
 
+  /// change the last value in the vector to a rate value
   void rate(const double td)
   {
     const auto s = vec.size();
@@ -182,6 +224,7 @@ struct values_t
       return;
     }
 
+    // the current value which was just added to the vector
     const double cval = vec[s - 1];
 
     // detect 32 bit overflow
@@ -207,6 +250,7 @@ struct values_t
     pval = cval;
   }
 
+  /// calculate min, avg, max.
   void update()
   {
     double tot = 0;
@@ -276,9 +320,14 @@ struct values_t
       lasty = y;
     }
 
-    mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), vec.back(), min, max, avg, unit);
+    if (! vec.empty())
+    {
+      mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), vec.back(), min, max, avg, unit);
+    }
   }
 };
+
+size_t values_t::max_size = 0;
 
 std::map<std::string, values_t> values;
 void
@@ -482,6 +531,7 @@ main(int argc, char *argv[])
         break;
     }
 
+  // unlink(debug_fn);
   if (softmax <= hardmin)
     softmax = hardmin + 1;
   if (hardmax <= hardmin)
@@ -504,6 +554,7 @@ main(int argc, char *argv[])
   signal(SIGWINCH, resize);
   signal(SIGINT,  finish);
   signal(SIGTERM, finish);
+  signal(SIGSEGV, finish);
 
   erase();
   int screenwidth=0, screenheight=0;

@@ -28,11 +28,21 @@ if ($ARGV[0] eq '-k')
 	$x += 0.2;
 	print "sin ";
 	print sin($x)*100.0;
-	print " cos ";
-	print cos($x*0.9)*80.0;
-	print " misc   ";
-	print cos($x*0.13+2)*50.0;
-	print " a 20 b -30 ca 3 cb 5 cc 6 f 7 g 9\n ";
+	if ($x > 3)
+	{
+	    print " cos ";
+	    print cos($x*0.9)*80.0;
+	}
+	if ($x > 6)
+	{
+	    print " misc   ";
+	    print cos($x*0.13+2)*50.0;
+	}
+	if ($x > 9)
+	{
+	    print " a 20 b -30 ca 3 cb 5 cc 6 f 7 g 9";
+	}
+	print "\n";
 	usleep(50000);
     }
 }
