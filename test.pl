@@ -37,6 +37,19 @@ if ($ARGV[0] eq '-k')
     }
 }
 
+if ($ARGV[0] eq '-r')
+{
+    my $x = 0;
+    my $y = 1;
+    while(1)
+    {
+	$x += 0.2;
+	$y *= 1.02;
+	print "lin $x exp $y\n";
+	usleep(50000);
+    }
+}
+
 my $x = 0;
 while(1)
 {

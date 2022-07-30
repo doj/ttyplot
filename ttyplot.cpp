@@ -14,6 +14,7 @@
 #include <time.h>
 #include <curses.h>
 #include <signal.h>
+#include <sys/time.h>
 
 #ifdef __OpenBSD__
 #include <err.h>
@@ -134,8 +135,7 @@ void finish(int sig) {
 struct values_t
 {
   std::deque<double> vec;
-  double cval = DOUBLE_MAX;
-  double pval = DOUBLE_MAX;
+  double pval;
   double max;
   double min;
   double avg;
@@ -152,6 +152,25 @@ struct values_t
     vec.push_back(v);
     if (vec.size() > plotwidth)
       vec.pop_front();
+  }
+
+  void rate(const double td)
+  {
+    const auto s = vec.size();
+    if (s == 0)
+      return;
+    if (s == 1)
+    {
+      pval = vec[0];
+      return;
+    }
+    const double cval = vec[s - 1];
+
+    // \todo detect 32bit or 64bit overflow
+
+    vec[s - 1] -= pval;
+    vec[s - 1] /= td;
+    pval = cval;
   }
 
   void update()
@@ -194,8 +213,24 @@ struct values_t
 
     for(const auto val : vec)
     {
-      const int y = (val>=hardmax) ? plotheight : (val<=global_min) ? 0 : (int)(((val-global_min)/mymax)*(double)plotheight);
-      draw_line(x++, lasty, y, (val>hardmax) ? max_errchar : (val<global_min) ? min_errchar : name[0]);
+      char pc;
+      int y;
+      if (val >= hardmax)
+      {
+        y = 0;
+        pc = max_errchar;
+      }
+      else if (val <= global_min)
+      {
+        y = plotheight - 1;
+        pc = min_errchar;
+      }
+      else
+      {
+        y = plotheight - static_cast<int>((val-global_min) / mymax * plotheight) - 1;
+        pc = name[0];
+      }
+      draw_line(x++, lasty, y, pc);
       lasty = y;
     }
 
@@ -300,12 +335,26 @@ parseColors(const std::string &color_str)
   return parsed_colors;
 }
 
+/// @return number of milliseconds since unix epoch.
+size_t
+getms()
+{
+  size_t ms = 0;
+  struct timeval tv;
+  if (gettimeofday(&tv, NULL) == 0)
+  {
+    ms = tv.tv_sec;
+    ms *= 1000u;
+    ms += tv.tv_usec / 1000u;
+  }
+  return ms;
+}
+
 int main(int argc, char *argv[])
 {
   const std::string one_str = "1";
   const std::string two_str = "2";
     int plotwidth=0, plotheight=0;
-    time_t t1;
     int c;
     int parsed_colors = -1;
     char max_errchar='e', min_errchar='v';
@@ -316,7 +365,7 @@ int main(int argc, char *argv[])
     const char *title = NULL;
     std::string unit;
     std::string color_str;
-    int rate=0;
+    bool rate = false;
 
     enum class OperatingMode {
       ONE, TWO, KV
@@ -325,7 +374,7 @@ int main(int argc, char *argv[])
     while((c=getopt(argc, argv, "2krc:C:e:E:s:S:m:M:t:u:")) != -1)
         switch(c) {
             case 'r':
-                rate=1;
+                rate = true;
                 break;
             case '2':
               op_mode = OperatingMode::TWO;
@@ -410,10 +459,11 @@ int main(int argc, char *argv[])
     mvprintw(screenheight/2, (screenwidth/2)-14, "waiting for data from stdin");
     refresh();
 
-    time(&t1);
+    auto t1 = getms();
     double global_max = DOUBLE_MIN;
     double global_min = DOUBLE_MAX;
     while(1) {
+      double td = 1;
       if (sigwinch_received)
       {
         sigwinch_received = false;
@@ -472,42 +522,22 @@ int main(int argc, char *argv[])
       {
         break;
       }
-#if 0
-        if(rate) {
-            t2=t1;
-            time(&t1);
-            td=t1-t2;
-            if(td==0)
-                td=1;
 
-            if(cval1==DOUBLE_MAX)
-                pval1=values1[n];
-            else
-                pval1=cval1;
-            cval1=values1[n];
-
-            values1[n]=(cval1-pval1)/td;
-
-            if(values1[n] < 0) // counter rewind
-                values1[n]=0;
-
-            if(two) {
-                if(cval2==DOUBLE_MAX)
-                    pval2=values2[n];
-                else
-                    pval2=cval2;
-                cval2=values2[n];
-
-                values2[n]=(cval2-pval2)/td;
-
-                if(values2[n] < 0) // counter rewind
-                    values2[n]=0;
-            }
-        } else
-#endif
+      if (rate)
+      {
+        const auto prev_ts = t1;
+        t1 = getms();
+        assert(prev_ts <= t1);
+        td = t1 - prev_ts;
+        if (td == 0)
         {
-            time(&t1);
+          td = 1;
         }
+        for(auto &p : values)
+        {
+          p.second.rate(td);
+        }
+      }
 
         erase();
         #ifdef _AIX
@@ -563,8 +593,9 @@ int main(int argc, char *argv[])
 
         // print current time
         {
+          time_t t = time(NULL);
           char ls[32];
-          auto lt = localtime(&t1);
+          auto lt = localtime(&t);
         #ifdef __sun
           asctime_r(lt, ls, sizeof(ls));
         #else
@@ -585,10 +616,12 @@ int main(int argc, char *argv[])
           mvprintw(screenheight-2, screenwidth-sizeof(verstring)+1, verstring);
         }
 
-#if 0
-        if(rate)
-            printw(" interval=%llds", (long long int)td);
-#endif
+        if (rate)
+        {
+          std::string s = "interval=";
+          s += std::to_string(td);
+          mvprintw(screenheight-1, screenwidth/2 - s.size()/2,"%s", s.c_str());
+        }
 
         draw_axes(plotheight, plotwidth);
         int idx = 0;
