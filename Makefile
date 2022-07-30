@@ -21,6 +21,6 @@ clean:
 test:	all
 	#perl test.pl -2 | ./ttyplot -2 -c AB -t "test title" -u "cm"
 	#perl test.pl | ./ttyplot -t "test title" -u "cm"
-	perl test.pl -k | ./ttyplot -k -t "test title" -u "cm"
+	perl test.pl -k | ./ttyplot -k -t "test title" -u "cm" -C 'red blue green'
 
 .PHONY: all clean install uninstall test

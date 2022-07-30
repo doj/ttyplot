@@ -32,7 +32,7 @@ if ($ARGV[0] eq '-k')
 	print cos($x*0.9)*80.0;
 	print " misc   ";
 	print cos($x*0.13+2)*50.0;
-	print " \n ";
+	print " a 20 b -30 ca 3 cb 5 cc 6 f 7 g 9\n ";
 	usleep(50000);
     }
 }

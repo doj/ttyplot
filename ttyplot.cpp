@@ -27,6 +27,7 @@
 #include <deque>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #define verstring "https://github.com/doj/ttyplot"
 
@@ -51,7 +52,7 @@
 SCREEN *sp;
 
 void usage() {
-  printf("Usage: ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit]\n\n"
+  printf("Usage: ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']\n\n"
          "  -2 read two values and draw two plots\n"
          "  -k key/value mode\n"
          "  -r rate of a counter (divide value by measured sample interval)\n"
@@ -63,7 +64,9 @@ void usage() {
          "  -m maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed\n"
          "  -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed\n"
          "  -t title of the plot\n"
-         "  -u unit displayed beside vertical bar\n");
+         "  -u unit displayed beside vertical bar\n"
+         "  -C set list of colors: black,blk,bk  red,rd  green,grn,gr  yellow,yel,yl  blue,blu,bl  magenta,mag,mg  cyan,cya,cy,cn  white,wht,wh\n"
+         );
   exit(EXIT_FAILURE);
 }
 
@@ -136,12 +139,12 @@ struct values_t
   double max;
   double min;
   double avg;
-  char plotchar;
+  std::string name;
 
-  void init(const std::string &s)
+  void init(std::string s)
   {
     assert(! s.empty());
-    plotchar = s[0];
+    name = std::move(s);
   }
 
   void push_back(const double v, const size_t plotwidth)
@@ -192,11 +195,11 @@ struct values_t
     for(const auto val : vec)
     {
       const int y = (val>=hardmax) ? plotheight : (val<=global_min) ? 0 : (int)(((val-global_min)/mymax)*(double)plotheight);
-      draw_line(x++, lasty, y, (val>hardmax) ? max_errchar : (val<global_min) ? min_errchar : plotchar);
+      draw_line(x++, lasty, y, (val>hardmax) ? max_errchar : (val<global_min) ? min_errchar : name[0]);
       lasty = y;
     }
 
-    mvprintw(plotheight + idx + 1, 0, "%c last=%.1f min=%.1f max=%.1f avg=%.1f%s", plotchar, vec.back(), min, max, avg, unit);
+    mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), vec.back(), min, max, avg, unit);
   }
 };
 
@@ -216,12 +219,95 @@ void push_back(const std::string &s, const double v, const size_t plotwidth)
   val.push_back(v, plotwidth);
 }
 
-int main(int argc, char *argv[]) {
+int
+parseColors(const std::string &color_str)
+{
+  if (color_str.empty())
+    return -1;
+  bool ret = true;
+  int parsed_colors = 0;
+  std::istringstream is(color_str);
+  while(is)
+  {
+    std::string col_str;
+    if (is >> col_str)
+    {
+      int col = -1;
+      if (col_str == "black" ||
+          col_str == "blk" ||
+          col_str == "bk")
+      {
+        col = COLOR_BLACK;
+      }
+      else if (col_str == "red" ||
+               col_str == "rd")
+      {
+        col = COLOR_RED;
+      }
+      else if (col_str == "green" ||
+               col_str == "grn" ||
+               col_str == "gr")
+      {
+        col = COLOR_GREEN;
+      }
+      else if (col_str == "yellow" ||
+               col_str == "yel" ||
+               col_str == "yl")
+      {
+        col = COLOR_YELLOW;
+      }
+      else if (col_str == "blue" ||
+               col_str == "blu" ||
+               col_str == "bl")
+      {
+        col = COLOR_BLUE;
+      }
+      else if (col_str == "magenta" ||
+               col_str == "mag" ||
+               col_str == "mg")
+      {
+        col = COLOR_MAGENTA;
+      }
+      else if (col_str == "cyan" ||
+               col_str == "cyn" ||
+               col_str == "cy" ||
+               col_str == "cn")
+      {
+        col = COLOR_CYAN;
+      }
+      else if (col_str == "white" ||
+               col_str == "wht" ||
+               col_str == "wh")
+      {
+        col = COLOR_WHITE;
+      }
+      else
+      {
+        printf("unknown color: %s\n", col_str.c_str());
+        ret = false;
+        continue;
+      }
+      assert(col >= 0);
+      // \todo get default background color
+      int res = init_pair(++parsed_colors, col, COLOR_BLACK);
+      assert(res == OK);
+    }
+  }
+  if (! ret)
+  {
+    exit(EXIT_FAILURE);
+  }
+  return parsed_colors;
+}
+
+int main(int argc, char *argv[])
+{
   const std::string one_str = "1";
   const std::string two_str = "2";
     int plotwidth=0, plotheight=0;
     time_t t1;
     int c;
+    int parsed_colors = -1;
     char max_errchar='e', min_errchar='v';
     double softmax=DOUBLE_MIN;
     double softmin=DOUBLE_MAX;
@@ -229,14 +315,14 @@ int main(int argc, char *argv[]) {
     double hardmin = DOUBLE_MIN;
     const char *title = NULL;
     std::string unit;
+    std::string color_str;
     int rate=0;
 
     enum class OperatingMode {
       ONE, TWO, KV
     } op_mode = OperatingMode::ONE;
 
-    opterr=0;
-    while((c=getopt(argc, argv, "2krc:e:E:s:S:m:M:t:u:")) != -1)
+    while((c=getopt(argc, argv, "2krc:C:e:E:s:S:m:M:t:u:")) != -1)
         switch(c) {
             case 'r':
                 rate=1;
@@ -247,6 +333,9 @@ int main(int argc, char *argv[]) {
           case 'k':
               op_mode = OperatingMode::KV;
               break;
+          case 'C':
+            color_str = optarg;
+            break;
             case 'c':
 #if 0
               //todo
@@ -299,8 +388,12 @@ int main(int argc, char *argv[]) {
     #endif
 
     sp = newterm(NULL, stdout, stdin);
+    if (! color_str.empty())
+    {
+      start_color();
+      parsed_colors = parseColors(color_str);
+    }
 
-    time(&t1);
     noecho();
     curs_set(FALSE);
     signal(SIGWINCH, resize);
@@ -317,6 +410,7 @@ int main(int argc, char *argv[]) {
     mvprintw(screenheight/2, (screenwidth/2)-14, "waiting for data from stdin");
     refresh();
 
+    time(&t1);
     double global_max = DOUBLE_MIN;
     double global_min = DOUBLE_MAX;
     while(1) {
@@ -497,10 +591,55 @@ int main(int argc, char *argv[]) {
 #endif
 
         draw_axes(plotheight, plotwidth);
-        unsigned idx = 0;
+        int idx = 0;
+        char last_plotchar = 0;
         for(const auto &p : values)
         {
-          p.second.plot(idx++, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit.c_str());
+          int attr = 0;
+          // did we parse colors?
+          if (parsed_colors > 0)
+          {
+            // use the color
+            attr = COLOR_PAIR((idx % parsed_colors) + 1);
+            // if we've used all colors, set some attributes
+            if (idx >= parsed_colors &&
+                idx < parsed_colors*2)
+            {
+              attr |= A_BOLD;
+            }
+            else if (idx >= parsed_colors*2 &&
+                     idx < parsed_colors*3)
+            {
+              attr |= A_STANDOUT;
+            }
+            else if (idx >= parsed_colors*3 &&
+                     idx < parsed_colors*4)
+            {
+              attr |= A_DIM;
+            }
+            else
+            {
+              attr |= A_REVERSE;
+            }
+          }
+          else
+          {
+            // check if the previous data point used the same plotchar
+            const char plotchar = p.first[0];
+            if (plotchar == last_plotchar)
+            {
+              // set a font attribute to better distinguish the same plotchars
+              int arr[4] = {A_BOLD, A_STANDOUT, A_DIM, A_REVERSE};
+              attr |= arr[idx & 3];
+            }
+            last_plotchar = plotchar;
+          }
+
+          attron(attr);
+          p.second.plot(idx, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit.c_str());
+          attroff(attr);
+
+          ++idx;
         }
 
         draw_labels(plotheight, global_max, global_min, unit.c_str());

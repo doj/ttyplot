@@ -133,7 +133,7 @@ iostat -xmy 1 nvme0n1 | stdbuf -o0 tr -s " " | stdbuf -o0 cut -d " " -f 4,5 | tt
 ## command line arguments
 
 ```
-  ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit]
+  ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']
   -2 read two values and draw two plots
   -k key/value mode
   -r rate of a counter (divide value by measured sample interval)
@@ -146,6 +146,7 @@ iostat -xmy 1 nvme0n1 | stdbuf -o0 tr -s " " | stdbuf -o0 cut -d " " -f 4,5 | tt
   -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed
   -t title of the plot
   -u unit displayed beside vertical bar
+  -C set list of colors: black,blk,bk  red,rd  green,grn,gr  yellow,yel,yl  blue,blu,bl  magenta,mag,mg  cyan,cya,cy,cn  white,wht,wh
 ```
 
 ## data input
