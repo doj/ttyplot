@@ -159,16 +159,35 @@ struct values_t
     const auto s = vec.size();
     if (s == 0)
       return;
+
     if (s == 1)
     {
       pval = vec[0];
+      vec[0] = 0;
       return;
     }
+
     const double cval = vec[s - 1];
 
-    // \todo detect 32bit or 64bit overflow
-
-    vec[s - 1] -= pval;
+    // detect 32 bit overflow
+    if (pval >= 0xffffff00 &&
+        cval >= 0.0 &&
+        cval < 0xff)
+    {
+      vec[s - 1] = cval + (pval - 0xffffff00);
+    }
+    // detect 31 bit overflow
+    else if (pval >= 0x7fffff00 &&
+             pval <= 0x7fffffff &&
+             cval >= 0.0 &&
+             cval < 0xff)
+    {
+      vec[s - 1] = cval + (pval - 0x7fffff00);
+    }
+    else
+    {
+      vec[s - 1] -= pval;
+    }
     vec[s - 1] /= td;
     pval = cval;
   }
@@ -528,10 +547,14 @@ int main(int argc, char *argv[])
         const auto prev_ts = t1;
         t1 = getms();
         assert(prev_ts <= t1);
-        td = t1 - prev_ts;
-        if (td == 0)
+        const auto tdiff = t1 - prev_ts;
+        if (tdiff == 0)
         {
           td = 1;
+        }
+        else
+        {
+          td = tdiff / 1000.0;
         }
         for(auto &p : values)
         {
@@ -620,6 +643,9 @@ int main(int argc, char *argv[])
         {
           std::string s = "interval=";
           s += std::to_string(td);
+          while(s.back() == '0')
+            s.pop_back();
+          s += 's';
           mvprintw(screenheight-1, screenwidth/2 - s.size()/2,"%s", s.c_str());
         }
 

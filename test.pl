@@ -50,6 +50,32 @@ if ($ARGV[0] eq '-r')
     }
 }
 
+if ($ARGV[0] eq '--rateoverflow')
+{
+    # simulate 32 bit unsigned overflow
+    if (0)
+    {
+	my $x = 0xfffffff0;
+	while(1)
+	{
+	    print "$x ";
+	    usleep(50000);
+	    $x = 0 if ++$x > 0xffffffff;
+	}
+    }
+    # simulate 31 bit unsigned overflow
+    else
+    {
+	my $x = 0x7ffffff0;
+	while(1)
+	{
+	    print "$x ";
+	    usleep(50000);
+	    $x = 0 if ++$x > 0x7fffffff;
+	}
+    }
+}
+
 my $x = 0;
 while(1)
 {
