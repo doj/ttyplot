@@ -405,15 +405,19 @@ int main(int argc, char *argv[])
             color_str = optarg;
             break;
             case 'c':
-#if 0
-              //todo
-              if (op_mode = OperatingMode::ONE;
-              values[one_str].plotchar = optarg[0];
-              if (two)
+              if (op_mode == OperatingMode::ONE)
               {
-                values[two_str].plotchar = optarg[1];
+                values[one_str].name = optarg[0];
               }
-#endif
+              else if (op_mode == OperatingMode::TWO)
+              {
+                values[one_str].name = optarg[0];
+                values[two_str].name = optarg[1];
+              }
+              else
+              {
+                printf("command line argument -c ignored in key/value mode\n");
+              }
                 break;
             case 'e':
                 max_errchar=optarg[0];
