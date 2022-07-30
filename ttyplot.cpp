@@ -31,7 +31,7 @@
 #include <sstream>
 #include <vector>
 
-#define verstring "https://github.com/doj/ttyplot"
+#define verstring "github.com/doj/ttyplot"
 
 #define DOUBLE_MIN (-FLT_MAX)
 #define DOUBLE_MAX FLT_MAX
@@ -40,6 +40,8 @@
 #define INT_UNINIT INT_MIN
 
 #define CHAR_REVERSE ' '
+
+#define SCREENWIDTH_FOR_2COLUMN 60
 
 #ifdef NOACS
 #define T_HLINE '-'
@@ -93,6 +95,7 @@ usage()
          "  -t title of the plot\n"
          "  -u unit displayed beside vertical bar\n"
          "  -C set list of colors: black,blk,bk  red,rd  green,grn,gr  yellow,yel,yl  blue,blu,bl  magenta,mag,mg  cyan,cya,cy,cn  white,wht,wh\n"
+         "\nfor more information visit https://%s\n", verstring
          );
   exit(EXIT_FAILURE);
 }
@@ -339,6 +342,7 @@ struct values_t
    * @param n highest index of valid values in @p v
    */
   void plot(const unsigned idx,
+            const int screenwidth,
             const int plotheight,
             const double global_max,
             const double global_min,
@@ -395,16 +399,31 @@ struct values_t
       lasty = y;
     }
 
-    if (name[0] == CHAR_REVERSE)
+    // calculate screen position of details
+    int x, y;
+    if (screenwidth < SCREENWIDTH_FOR_2COLUMN)
+    {
+      x = 0;
+      y = plotheight + idx + 1;
+    }
+    else
+    {
+      x = (idx & 1) * SCREENWIDTH_FOR_2COLUMN;
+      y = plotheight + idx/2 + 1;
+    }
+    // print the detail name
+    if (name[0] == CHAR_REVERSE &&
+        name.size() == 1)
     {
       attron(A_REVERSE);
-      mvaddch(plotheight + idx + 1, 0, CHAR_REVERSE);
+      mvaddch(y, x, CHAR_REVERSE);
       attroff(A_REVERSE);
     }
     else
     {
-      mvprintw(plotheight + idx + 1, 0, "%s", name.c_str());
+      mvprintw(y, x, "%s", name.c_str());
     }
+    // print details
     printw(" last=%.1f min=%.1f max=%.1f avg=%.1f", last(), min, max, avg);
   }
 
@@ -786,7 +805,14 @@ main(int argc, char *argv[])
       refresh();
       continue;
     }
-    plotheight = screenheight - values.size() - 1;
+    if (screenwidth < SCREENWIDTH_FOR_2COLUMN)
+    {
+      plotheight = screenheight - values.size() - 1;
+    }
+    else
+    {
+      plotheight = screenheight - values.size()/2 - 1;
+    }
     if (plotheight < screenheight / 2)
     {
       plotheight = screenheight / 2;
@@ -900,7 +926,7 @@ main(int argc, char *argv[])
       }
 
       attron(attr);
-      p.second.plot(idx, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax);
+      p.second.plot(idx, screenwidth, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax);
       attroff(attr);
 
       ++idx;
