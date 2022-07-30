@@ -52,7 +52,9 @@
 /* global because we need it accessible in the signal handler */
 SCREEN *sp;
 
-void usage() {
+void
+usage()
+{
   printf("Usage: ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']\n\n"
          "  -2 read two values and draw two plots\n"
          "  -k key/value mode\n"
@@ -71,7 +73,8 @@ void usage() {
   exit(EXIT_FAILURE);
 }
 
-void draw_axes(const int plotheight, const int plotwidth)
+void
+draw_axes(const int plotheight, const int plotwidth)
 {
   // x axis
   mvhline(plotheight, 1, T_HLINE, plotwidth-1);
@@ -83,10 +86,11 @@ void draw_axes(const int plotheight, const int plotwidth)
   mvaddch(plotheight, 0, T_LLCR);
 }
 
-void draw_labels(const int plotheight,
-                 const double max,
-                 const double min,
-                 const char *unit)
+void
+draw_labels(const int plotheight,
+            const double max,
+            const double min,
+            const char *unit)
 {
   attron(A_BOLD);
   mvprintw(0,              1, "%.1f%s", max,             unit);
@@ -97,39 +101,44 @@ void draw_labels(const int plotheight,
   attroff(A_BOLD);
 }
 
-void draw_line(const int x,
-               int y1,
-               int y2,
-               const char pc)
+void
+draw_line(const int x,
+          int y1,
+          int y2,
+          const char pc)
 {
-    if (y1 == INT_MIN ||
-        y1 == y2)
-    {
-      mvaddch(y2, x, pc);
-      return;
-    }
-    if (y1 > y2)
-    {
-      std::swap(y1, y2);
-    }
-    assert(y1 < y2);
-    mvvline(y1, x, pc, y2-y1);
+  if (y1 == INT_MIN ||
+      y1 == y2)
+  {
+    mvaddch(y2, x, pc);
+    return;
+  }
+  if (y1 > y2)
+  {
+    std::swap(y1, y2);
+  }
+  assert(y1 < y2);
+  mvvline(y1, x, pc, y2-y1);
 }
 
 volatile bool sigwinch_received = false;
-void resize(int sig) {
-    (void) sig;
-    sigwinch_received = true;
+void
+resize(int sig)
+{
+  (void) sig;
+  sigwinch_received = true;
 }
 
-void finish(int sig) {
-    (void) sig;
-    curs_set(FALSE);
-    echo();
-    refresh();
-    endwin();
-    delscreen(sp);
-    exit(EXIT_SUCCESS);
+void
+finish(int sig)
+{
+  (void) sig;
+  curs_set(FALSE);
+  echo();
+  refresh();
+  endwin();
+  delscreen(sp);
+  exit(EXIT_SUCCESS);
 }
 
 struct values_t
@@ -200,9 +209,9 @@ struct values_t
     size_t i = 0;
     for(const auto val : vec)
     {
-      if(val > max)
+      if (val > max)
         max = val;
-      if(val < min)
+      if (val < min)
         min = val;
       tot += val;
       ++i;
@@ -258,7 +267,8 @@ struct values_t
 };
 
 std::map<std::string, values_t> values;
-void push_back(const std::string &s, const double v, const size_t plotwidth)
+void
+push_back(const std::string &s, const double v, const size_t plotwidth)
 {
   if (s.empty())
     return;
@@ -369,355 +379,358 @@ getms()
   return ms;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
   const std::string one_str = "1";
   const std::string two_str = "2";
-    int plotwidth=0, plotheight=0;
-    int c;
-    int parsed_colors = -1;
-    char max_errchar='e', min_errchar='v';
-    double softmax=DOUBLE_MIN;
-    double softmin=DOUBLE_MAX;
-    double hardmax=DOUBLE_MAX;
-    double hardmin = DOUBLE_MIN;
-    const char *title = NULL;
-    std::string unit;
-    std::string color_str;
-    bool rate = false;
+  int plotwidth=0, plotheight=0;
+  int c;
+  int parsed_colors = -1;
+  char max_errchar='e', min_errchar='v';
+  double softmax=DOUBLE_MIN;
+  double softmin=DOUBLE_MAX;
+  double hardmax=DOUBLE_MAX;
+  double hardmin = DOUBLE_MIN;
+  const char *title = NULL;
+  std::string unit;
+  std::string color_str;
+  bool rate = false;
 
-    enum class OperatingMode {
-      ONE, TWO, KV
-    } op_mode = OperatingMode::ONE;
+  enum class OperatingMode {
+    ONE, TWO, KV
+  } op_mode = OperatingMode::ONE;
 
-    while((c=getopt(argc, argv, "2krc:C:e:E:s:S:m:M:t:u:")) != -1)
-        switch(c) {
-            case 'r':
-                rate = true;
-                break;
-            case '2':
-              op_mode = OperatingMode::TWO;
-              break;
-          case 'k':
-              op_mode = OperatingMode::KV;
-              break;
-          case 'C':
-            color_str = optarg;
-            break;
-            case 'c':
-              if (op_mode == OperatingMode::ONE)
-              {
-                values[one_str].name = optarg[0];
-              }
-              else if (op_mode == OperatingMode::TWO)
-              {
-                values[one_str].name = optarg[0];
-                values[two_str].name = optarg[1];
-              }
-              else
-              {
-                printf("command line argument -c ignored in key/value mode\n");
-              }
-                break;
-            case 'e':
-                max_errchar=optarg[0];
-                break;
-            case 'E':
-                min_errchar=optarg[0];
-                break;
-            case 's':
-                softmax=atof(optarg);
-                break;
-            case 'S':
-                softmin=atof(optarg);
-                break;
-            case 'm':
-                hardmax=atof(optarg);
-                break;
-            case 'M':
-                hardmin=atof(optarg);
-                break;
-            case 't':
-              title = optarg;
-                break;
-            case 'u':
-                  unit = " ";
-              unit += optarg;
-                break;
-            case '?':
-                usage();
-                break;
+  while((c=getopt(argc, argv, "2krc:C:e:E:s:S:m:M:t:u:")) != -1)
+    switch(c) {
+      case 'r':
+        rate = true;
+        break;
+      case '2':
+        op_mode = OperatingMode::TWO;
+        break;
+      case 'k':
+        op_mode = OperatingMode::KV;
+        break;
+      case 'C':
+        color_str = optarg;
+        break;
+      case 'c':
+        if (op_mode == OperatingMode::ONE)
+        {
+          values[one_str].name = optarg[0];
         }
-
-    if(softmax <= hardmin)
-        softmax = hardmin + 1;
-    if(hardmax <= hardmin)
-        hardmax = DOUBLE_MAX;
-
-    #ifdef __OpenBSD__
-    if (pledge("stdio tty", NULL) == -1)
-        err(1, "pledge");
-    #endif
-
-    sp = newterm(NULL, stdout, stdin);
-    if (! color_str.empty())
-    {
-      start_color();
-      parsed_colors = parseColors(color_str);
+        else if (op_mode == OperatingMode::TWO)
+        {
+          values[one_str].name = optarg[0];
+          values[two_str].name = optarg[1];
+        }
+        else
+        {
+          printf("command line argument -c ignored in key/value mode\n");
+        }
+        break;
+      case 'e':
+        max_errchar=optarg[0];
+        break;
+      case 'E':
+        min_errchar=optarg[0];
+        break;
+      case 's':
+        softmax=atof(optarg);
+        break;
+      case 'S':
+        softmin=atof(optarg);
+        break;
+      case 'm':
+        hardmax=atof(optarg);
+        break;
+      case 'M':
+        hardmin=atof(optarg);
+        break;
+      case 't':
+        title = optarg;
+        break;
+      case 'u':
+        unit = " ";
+        unit += optarg;
+        break;
+      case '?':
+        usage();
+        break;
     }
 
-    noecho();
-    curs_set(FALSE);
-    signal(SIGWINCH, resize);
-    signal(SIGINT, finish);
+  if (softmax <= hardmin)
+    softmax = hardmin + 1;
+  if (hardmax <= hardmin)
+    hardmax = DOUBLE_MAX;
+
+#ifdef __OpenBSD__
+  if (pledge("stdio tty", NULL) == -1)
+    err(1, "pledge");
+#endif
+
+  sp = newterm(NULL, stdout, stdin);
+  if (! color_str.empty())
+  {
+    start_color();
+    parsed_colors = parseColors(color_str);
+  }
+
+  noecho();
+  curs_set(FALSE);
+  signal(SIGWINCH, resize);
+  signal(SIGINT,  finish);
+  signal(SIGTERM, finish);
+
+  erase();
+  int screenwidth=0, screenheight=0;
+#ifdef NOGETMAXYX
+  screenheight=LINES;
+  screenwidth=COLS;
+#else
+  getmaxyx(stdscr, screenheight, screenwidth);
+#endif
+  mvprintw(screenheight/2, (screenwidth/2)-14, "waiting for data from stdin");
+  refresh();
+
+  auto t1 = getms();
+  double global_max = DOUBLE_MIN;
+  double global_min = DOUBLE_MAX;
+  while(1)
+  {
+    double td = 1;
+    if (sigwinch_received)
+    {
+      sigwinch_received = false;
+      endwin();
+    }
+    int r = 0;
+    if (op_mode == OperatingMode::ONE)
+    {
+      double v;
+      r = scanf("%lf", &v);
+      if (r == 1)
+      {
+        push_back(one_str, v, plotwidth);
+      }
+    }
+    else if (op_mode == OperatingMode::TWO)
+    {
+      double v1, v2;
+      r = scanf("%lf %lf", &v1, &v2);
+      if (r == 2)
+      {
+        push_back(one_str, v1, plotwidth);
+        push_back(two_str, v2, plotwidth);
+      }
+    }
+    else if (op_mode == OperatingMode::KV)
+    {
+      std::string line;
+      std::getline(std::cin, line);
+      std::istringstream is(line);
+      while(is)
+      {
+        std::string key;
+        is >> key;
+        if (! is)
+          break;
+        double v;
+        is >> v;
+        if (! is)
+          break;
+        push_back(key, v, plotwidth);
+        ++r;
+      }
+    }
+    else
+    {
+      assert(false);
+    }
+
+    if (r == 0)
+    {
+      while(getchar()!='\n') {}
+      continue;
+    }
+    else if (r < 0)
+    {
+      break;
+    }
+
+    if (rate)
+    {
+      const auto prev_ts = t1;
+      t1 = getms();
+      assert(prev_ts <= t1);
+      const auto tdiff = t1 - prev_ts;
+      if (tdiff == 0)
+      {
+        td = 1;
+      }
+      else
+      {
+        td = tdiff / 1000.0;
+      }
+      for(auto &p : values)
+      {
+        p.second.rate(td);
+      }
+    }
 
     erase();
-    int screenwidth=0, screenheight=0;
-    #ifdef NOGETMAXYX
+#ifdef _AIX
+    refresh();
+#endif
+#ifdef NOGETMAXYX
     screenheight=LINES;
     screenwidth=COLS;
-    #else
+#else
     getmaxyx(stdscr, screenheight, screenwidth);
-    #endif
-    mvprintw(screenheight/2, (screenwidth/2)-14, "waiting for data from stdin");
-    refresh();
+#endif
+    if (screenheight < 8)
+    {
+      mvprintw(0,0,"screen height too small");
+      refresh();
+      continue;
+    }
+    if (screenwidth < 40)
+    {
+      mvprintw(0,0,"screen width too small");
+      refresh();
+      continue;
+    }
+    plotheight = screenheight - values.size() - 1;
+    if (plotheight < screenheight / 2)
+    {
+      plotheight = screenheight / 2;
+    }
+    plotwidth=screenwidth;
 
-    auto t1 = getms();
-    double global_max = DOUBLE_MIN;
-    double global_min = DOUBLE_MAX;
-    while(1) {
-      double td = 1;
-      if (sigwinch_received)
+    for(auto &p : values)
+    {
+      auto &vals = p.second;
+      vals.update();
+      if (vals.max > global_max)
       {
-        sigwinch_received = false;
-        endwin();
+        global_max = vals.max;
       }
-      int r = 0;
-      if (op_mode == OperatingMode::ONE)
+      if (vals.min < global_min)
       {
-        double v;
-        r = scanf("%lf", &v);
-        if (r == 1)
+        global_min = vals.min;
+      }
+    }
+
+    if (global_max < softmax)
+      global_max = softmax;
+    if (hardmax != DOUBLE_MAX)
+      global_max = hardmax;
+    if (softmin < global_min)
+      global_min = softmin;
+    if (hardmin != DOUBLE_MIN)
+      global_min = hardmin;
+
+    // print current time
+    {
+      time_t t = time(NULL);
+      char ls[32];
+      auto lt = localtime(&t);
+#ifdef __sun
+      asctime_r(lt, ls, sizeof(ls));
+#else
+      asctime_r(lt, ls);
+#endif
+      auto len = strlen(ls);
+      assert(len > 10);
+      // strip trailing NL character
+      if (ls[len - 1] == '\n')
+      {
+        ls[--len] = 0;
+      }
+      mvprintw(screenheight-1, screenwidth-len, "%s", ls);
+    }
+    // print program version string
+    if (values.size() >= 2)
+    {
+      mvprintw(screenheight-2, screenwidth-sizeof(verstring)+1, verstring);
+    }
+
+    if (rate)
+    {
+      std::string s = "interval=";
+      s += std::to_string(td);
+      while(s.back() == '0')
+        s.pop_back();
+      s += 's';
+      mvprintw(screenheight-1, screenwidth/2 - s.size()/2,"%s", s.c_str());
+    }
+
+    draw_axes(plotheight, plotwidth);
+    int idx = 0;
+    char last_plotchar = 0;
+    for(const auto &p : values)
+    {
+      int attr = 0;
+      // did we parse colors?
+      if (parsed_colors > 0)
+      {
+        // use the color
+        attr = COLOR_PAIR((idx % parsed_colors) + 1);
+        // if we've used all colors, set some attributes
+        if (idx >= parsed_colors &&
+            idx < parsed_colors*2)
         {
-          push_back(one_str, v, plotwidth);
+          attr |= A_BOLD;
         }
-      }
-      else if (op_mode == OperatingMode::TWO)
-      {
-        double v1, v2;
-        r = scanf("%lf %lf", &v1, &v2);
-        if (r == 2)
+        else if (idx >= parsed_colors*2 &&
+                 idx < parsed_colors*3)
         {
-          push_back(one_str, v1, plotwidth);
-          push_back(two_str, v2, plotwidth);
+          attr |= A_STANDOUT;
         }
-      }
-      else if (op_mode == OperatingMode::KV)
-      {
-        std::string line;
-        std::getline(std::cin, line);
-        std::istringstream is(line);
-        while(is)
+        else if (idx >= parsed_colors*3 &&
+                 idx < parsed_colors*4)
         {
-          std::string key;
-          is >> key;
-          if (! is)
-            break;
-          double v;
-          is >> v;
-          if (! is)
-            break;
-          push_back(key, v, plotwidth);
-          ++r;
+          attr |= A_DIM;
+        }
+        else
+        {
+          attr |= A_REVERSE;
         }
       }
       else
       {
-        assert(false);
+        // check if the previous data point used the same plotchar
+        const char plotchar = p.first[0];
+        if (plotchar == last_plotchar)
+        {
+          // set a font attribute to better distinguish the same plotchars
+          int arr[4] = {A_BOLD, A_STANDOUT, A_DIM, A_REVERSE};
+          attr |= arr[idx & 3];
+        }
+        last_plotchar = plotchar;
       }
 
-      if(r == 0)
-      {
-        while(getchar()!='\n') {}
-        continue;
-      }
-      else if(r < 0)
-      {
-        break;
-      }
+      attron(attr);
+      p.second.plot(idx, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit.c_str());
+      attroff(attr);
 
-      if (rate)
-      {
-        const auto prev_ts = t1;
-        t1 = getms();
-        assert(prev_ts <= t1);
-        const auto tdiff = t1 - prev_ts;
-        if (tdiff == 0)
-        {
-          td = 1;
-        }
-        else
-        {
-          td = tdiff / 1000.0;
-        }
-        for(auto &p : values)
-        {
-          p.second.rate(td);
-        }
-      }
+      ++idx;
+    }
 
-        erase();
-        #ifdef _AIX
-        refresh();
-        #endif
-        #ifdef NOGETMAXYX
-        screenheight=LINES;
-        screenwidth=COLS;
-        #else
-        getmaxyx(stdscr, screenheight, screenwidth);
-        #endif
-        if (screenheight < 8)
-        {
-          mvprintw(0,0,"screen height too small");
-          refresh();
-          continue;
-        }
-        if (screenwidth < 40)
-        {
-          mvprintw(0,0,"screen width too small");
-          refresh();
-          continue;
-        }
-        plotheight = screenheight - values.size() - 1;
-        if (plotheight < screenheight / 2)
-        {
-          plotheight = screenheight / 2;
-        }
-        plotwidth=screenwidth;
+    draw_labels(plotheight, global_max, global_min, unit.c_str());
+    if (title)
+    {
+      attron(A_BOLD);
+      mvprintw(0, (screenwidth/2)-(strlen(title)/2)-1, " %s ", title);
+      attroff(A_BOLD);
+    }
 
-        for(auto &p : values)
-        {
-          auto &vals = p.second;
-          vals.update();
-          if (vals.max > global_max)
-          {
-            global_max = vals.max;
-          }
-          if (vals.min < global_min)
-          {
-            global_min = vals.min;
-          }
-        }
+    move(0,0);
+    refresh();
+  }  // while 1
 
-        if(global_max < softmax)
-          global_max = softmax;
-        if(hardmax != DOUBLE_MAX)
-            global_max = hardmax;
-        if(softmin < global_min)
-          global_min = softmin;
-        if(hardmin != DOUBLE_MIN)
-          global_min = hardmin;
-
-        // print current time
-        {
-          time_t t = time(NULL);
-          char ls[32];
-          auto lt = localtime(&t);
-        #ifdef __sun
-          asctime_r(lt, ls, sizeof(ls));
-        #else
-          asctime_r(lt, ls);
-        #endif
-          auto len = strlen(ls);
-          assert(len > 10);
-          // strip trailing NL character
-          if (ls[len - 1] == '\n')
-          {
-            ls[--len] = 0;
-          }
-          mvprintw(screenheight-1, screenwidth-len, "%s", ls);
-        }
-        // print program version string
-        if (values.size() >= 2)
-        {
-          mvprintw(screenheight-2, screenwidth-sizeof(verstring)+1, verstring);
-        }
-
-        if (rate)
-        {
-          std::string s = "interval=";
-          s += std::to_string(td);
-          while(s.back() == '0')
-            s.pop_back();
-          s += 's';
-          mvprintw(screenheight-1, screenwidth/2 - s.size()/2,"%s", s.c_str());
-        }
-
-        draw_axes(plotheight, plotwidth);
-        int idx = 0;
-        char last_plotchar = 0;
-        for(const auto &p : values)
-        {
-          int attr = 0;
-          // did we parse colors?
-          if (parsed_colors > 0)
-          {
-            // use the color
-            attr = COLOR_PAIR((idx % parsed_colors) + 1);
-            // if we've used all colors, set some attributes
-            if (idx >= parsed_colors &&
-                idx < parsed_colors*2)
-            {
-              attr |= A_BOLD;
-            }
-            else if (idx >= parsed_colors*2 &&
-                     idx < parsed_colors*3)
-            {
-              attr |= A_STANDOUT;
-            }
-            else if (idx >= parsed_colors*3 &&
-                     idx < parsed_colors*4)
-            {
-              attr |= A_DIM;
-            }
-            else
-            {
-              attr |= A_REVERSE;
-            }
-          }
-          else
-          {
-            // check if the previous data point used the same plotchar
-            const char plotchar = p.first[0];
-            if (plotchar == last_plotchar)
-            {
-              // set a font attribute to better distinguish the same plotchars
-              int arr[4] = {A_BOLD, A_STANDOUT, A_DIM, A_REVERSE};
-              attr |= arr[idx & 3];
-            }
-            last_plotchar = plotchar;
-          }
-
-          attron(attr);
-          p.second.plot(idx, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit.c_str());
-          attroff(attr);
-
-          ++idx;
-        }
-
-        draw_labels(plotheight, global_max, global_min, unit.c_str());
-        if (title)
-        {
-          attron(A_BOLD);
-          mvprintw(0, (screenwidth/2)-(strlen(title)/2)-1, " %s ", title);
-          attroff(A_BOLD);
-        }
-
-        move(0,0);
-        refresh();
-    }  // while 1
-
-    endwin();
-    delscreen(sp);
-    return EXIT_SUCCESS;
+  endwin();
+  delscreen(sp);
+  return EXIT_SUCCESS;
 }
