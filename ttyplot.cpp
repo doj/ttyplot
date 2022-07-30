@@ -67,18 +67,16 @@ void usage() {
   exit(EXIT_FAILURE);
 }
 
-void draw_axes(const int screenheight,
-               const int plotheight,
-               const int plotwidth)
+void draw_axes(const int plotheight, const int plotwidth)
 {
   // x axis
-  mvhline(screenheight-3, 1, T_HLINE, plotwidth-1);
-  mvaddch(screenheight-3, plotwidth, T_RARR);
+  mvhline(plotheight, 1, T_HLINE, plotwidth-1);
+  mvaddch(plotheight, plotwidth-1, T_RARR);
   // y axis
   mvvline(1, 0, T_VLINE, plotheight-1);
   mvaddch(0, 0, T_UARR);
   // corner
-  mvaddch(screenheight-3, 0, T_LLCR);
+  mvaddch(plotheight, 0, T_LLCR);
 }
 
 void draw_labels(const int plotheight,
@@ -87,11 +85,11 @@ void draw_labels(const int plotheight,
                  const char *unit)
 {
   attron(A_BOLD);
-  mvprintw(0,              1, "%.1f %s", max,             unit);
-  mvprintw(plotheight/4,   1, "%.1f %s", min/4 + max*3/4, unit);
-  mvprintw(plotheight/2,   1, "%.1f %s", min/2 + max/2,   unit);
-  mvprintw(plotheight*3/4, 1, "%.1f %s", min*3/4 + max/4, unit);
-  mvprintw(plotheight,     1, "%.1f %s", min,             unit);
+  mvprintw(0,              1, "%.1f%s", max,             unit);
+  mvprintw(plotheight/4,   1, "%.1f%s", min/4 + max*3/4, unit);
+  mvprintw(plotheight/2,   1, "%.1f%s", min/2 + max/2,   unit);
+  mvprintw(plotheight*3/4, 1, "%.1f%s", min*3/4 + max/4, unit);
+  mvprintw(plotheight-1,   1, "%.1f%s", min,             unit);
   attroff(A_BOLD);
 }
 
@@ -198,7 +196,7 @@ struct values_t
       lasty = y;
     }
 
-    mvprintw(plotheight + idx + 1, 5, "%c last=%.1f min=%.1f max=%.1f avg=%.1f %s", plotchar, vec.back(), min, max, avg, unit);
+    mvprintw(plotheight + idx + 1, 0, "%c last=%.1f min=%.1f max=%.1f avg=%.1f%s", plotchar, vec.back(), min, max, avg, unit);
   }
 };
 
@@ -230,7 +228,7 @@ int main(int argc, char *argv[]) {
     double hardmax=DOUBLE_MAX;
     double hardmin = DOUBLE_MIN;
     const char *title = NULL;
-    const char *unit = "";
+    std::string unit;
     int rate=0;
 
     enum class OperatingMode {
@@ -282,7 +280,8 @@ int main(int argc, char *argv[]) {
               title = optarg;
                 break;
             case 'u':
-              unit = optarg;
+                  unit = " ";
+              unit += optarg;
                 break;
             case '?':
                 usage();
@@ -426,7 +425,23 @@ int main(int argc, char *argv[]) {
         #else
         getmaxyx(stdscr, screenheight, screenwidth);
         #endif
-        plotheight=screenheight-3;
+        if (screenheight < 8)
+        {
+          mvprintw(0,0,"screen height too small");
+          refresh();
+          continue;
+        }
+        if (screenwidth < 40)
+        {
+          mvprintw(0,0,"screen width too small");
+          refresh();
+          continue;
+        }
+        plotheight = screenheight - values.size() - 1;
+        if (plotheight < screenheight / 2)
+        {
+          plotheight = screenheight / 2;
+        }
         plotwidth=screenwidth;
 
         for(auto &p : values)
@@ -452,8 +467,6 @@ int main(int argc, char *argv[]) {
         if(hardmin != DOUBLE_MIN)
           global_min = hardmin;
 
-        // print program version string
-        mvprintw(screenheight-1, screenwidth-sizeof(verstring)+1, verstring);
         // print current time
         {
           char ls[32];
@@ -470,7 +483,12 @@ int main(int argc, char *argv[]) {
           {
             ls[--len] = 0;
           }
-          mvprintw(screenheight-2, screenwidth-len, "%s", ls);
+          mvprintw(screenheight-1, screenwidth-len, "%s", ls);
+        }
+        // print program version string
+        if (values.size() >= 2)
+        {
+          mvprintw(screenheight-2, screenwidth-sizeof(verstring)+1, verstring);
         }
 
 #if 0
@@ -478,14 +496,14 @@ int main(int argc, char *argv[]) {
             printw(" interval=%llds", (long long int)td);
 #endif
 
-        draw_axes(screenheight, plotheight, plotwidth);
+        draw_axes(plotheight, plotwidth);
         unsigned idx = 0;
         for(const auto &p : values)
         {
-          p.second.plot(idx++, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit);
+          p.second.plot(idx++, plotheight, global_max, global_min, max_errchar, min_errchar, hardmax, unit.c_str());
         }
 
-        draw_labels(plotheight, global_max, global_min, unit);
+        draw_labels(plotheight, global_max, global_min, unit.c_str());
         if (title)
         {
           attron(A_BOLD);
