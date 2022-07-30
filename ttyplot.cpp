@@ -416,6 +416,8 @@ main(int argc, char *argv[])
     ONE, TWO, KV
   } op_mode = OperatingMode::ONE;
 
+  values[one_str].name = '#';
+
   while((c=getopt(argc, argv, "2bkrc:C:e:E:s:S:m:M:t:u:")) != -1)
     switch(c) {
       case 'b':
@@ -429,6 +431,8 @@ main(int argc, char *argv[])
         break;
       case 'k':
         op_mode = OperatingMode::KV;
+	values[one_str].name = '1';
+	values[two_str].name = '2';
         break;
       case 'C':
         color_str = optarg;
@@ -477,11 +481,6 @@ main(int argc, char *argv[])
         usage();
         break;
     }
-
-  if (op_mode == OperatingMode::ONE)
-  {
-    values[one_str].name = '#';
-  }
 
   if (softmax <= hardmin)
     softmax = hardmin + 1;

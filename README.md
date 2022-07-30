@@ -13,58 +13,62 @@ supports rate calculation for counters and up to two graphs on a single display 
 
 ## examples
 
-### cpu usage from vmstat using awk to pick the right column
+### Linux: cpu usage from vmstat using awk to pick the right column
 ```
 vmstat -n 1 | gawk '{ print 100-int($(NF-2)); fflush(); }' | ttyplot
 ```
 
-### cpu usage from sar with title and fixed scale to 100%
+### Linux: cpu usage from sar with title and fixed scale to 100%
 ```
-sar 1 | gawk '{ print 100-int($NF); fflush(); }' | ttyplot -s 100 -t "cpu usage" -u "%"
+sar 1 | gawk '{ print 100-int($NF); fflush(); }' | ttyplot -s 100 -t "cpu usage" -u "%" -b -c '|'
 ```
 
-### memory usage from sar, using perl to pick the right column
+### Linux: memory usage from sar, using perl to pick the right column
 ```
 sar -r 1 | perl -lane 'BEGIN{$|=1} print "@F[5]"' | ttyplot -s 100 -t "memory used %" -u "%"
 ```
 
-### memory usage on macOS
+### OsX: memory usage
 ```
 vm_stat 1 | perl -e '$|=1;<>;<>;while(<>){@_=split(/\s+/);print " ".($_[2]*4096/1024/1024/1024)}' | ttyplot -M 0 -t "MacOS Memory Usage" -u GiB -b
 ```
 
-### number of processes in running and io blocked state
+### Linux: number of processes in running and io blocked state
 ```
 vmstat -n 1 | perl -lane 'BEGIN{$|=1} print "@F[0,1]"' | ttyplot -2 -t "procs in R and D state"
 ```
 
-### load average via uptime and awk
+### Linux: load average via uptime and awk
 ```
 { while true; do uptime | gawk '{ gsub(/,/, ""); print $(NF-2) }'; sleep 1; done } | ttyplot -t "load average" -s load
 ```
 
-### ping plot with sed
-on macOS change `-u` to `-l`
+### Linux ping plot
 ```
 ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -u ms -b
 ```
 
-### wifi signal level in -dBM (higher is worse) using iwconfig
+### OsX ping plot
+```
+ping 8.8.8.8 | sed -l 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -u ms -b
+```
+
+### Linux: wifi signal level in -dBM (higher is worse) using iwconfig
 ```
 { while true; do iwconfig 2>/dev/null | grep "Signal level" | sed -u 's/^.*Signal level=-//g; s/dBm//g'; sleep 1; done } | ttyplot -t "wifi signal" -u "-dBm" -s 90
 ```
 
-### wifi signal on macOS
+### OsX: wifi signal
 ```
 { while true; do /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport --getinfo | awk '/agrCtlRSSI/ {print -$2; fflush();}'; sleep 1; done } | ttyplot -t "wifi signal" -u "-dBm" -s 90
 ```
 
-### cpu temperature from proc
+### Linux: cpu temperature from proc
 ```
 { while true; do awk '{ printf("%.1f\n", $1/1000) }' /sys/class/thermal/thermal_zone0/temp; sleep 1; done } | ttyplot -t "cpu temp" -u C
 ```
 
-### fan speed from lm-sensors using grep, tr and cut
+### Linux: fan speed from lm-sensors using grep, tr and cut
 ```
 { while true; do sensors | grep fan1: | tr -s " " | cut -d" " -f2; sleep 1; done } | ttyplot -t "fan speed" -u RPM
 ```
@@ -76,7 +80,7 @@ ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -
 
 ### bitcoin price chart using curl and jq
 ```
-{ while true; do curl -sL https://api.coindesk.com/v1/bpi/currentprice.json  | jq .bpi.USD.rate_float; sleep 600; done } | ttyplot -t "bitcoin price" -u usd
+{ while true; do curl -sL https://api.coindesk.com/v1/bpi/currentprice.json | jq .bpi.USD.rate_float; sleep 600; done } | ttyplot -t "bitcoin price" -u usd
 ```
 
 ### stock quote chart
@@ -86,7 +90,7 @@ ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -
 
 ### prometheus load average via node_exporter
 ```
-{ while true; do curl -s  http://10.4.7.180:9100/metrics | grep "^node_load1 " | cut -d" " -f2; sleep 1; done } | ttyplot
+{ while true; do curl -s http://10.4.7.180:9100/metrics | grep "^node_load1 " | cut -d" " -f2; sleep 1; done } | ttyplot
 ```
 
 ## network/disk throughput examples
@@ -99,7 +103,7 @@ snmpdelta -v 2c -c public -Cp 10 10.23.73.254 1.3.6.1.2.1.2.2.1.{10,16}.9 | gawk
 
 ### local network throughput for all interfaces combined from sar
 ```
-sar  -n DEV 1 | gawk '{ if($6 ~ /rxkB/) { print iin/1000; print out/1000; iin=0; out=0; fflush(); } iin=iin+$6; out=out+$7; }' | ttyplot -2 -u "MB/s"
+sar -n DEV 1 | gawk '{ if($6 ~ /rxkB/) { print iin/1000; print out/1000; iin=0; out=0; fflush(); } iin=iin+$6; out=out+$7; }' | ttyplot -2 -u "MB/s"
 ```
 
 ### disk throughput from iostat

@@ -1,7 +1,12 @@
 PREFIX    ?= $(DESTDIR)/usr/local
 MANPREFIX ?= $(PREFIX)/man
 CXXFLAGS  += -Wall -Wextra -O2 -std=c++11
+ifeq ($(shell uname),Linux)
+LDLIBS += -lncurses -ltinfo
+endif
+ifeq ($(shell uname),Darwin)
 LDLIBS += -lcurses
+endif
 
 all: ttyplot
 
