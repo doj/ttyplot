@@ -28,7 +28,8 @@ if ($ARGV[0] eq '-k')
 	$x += 0.2;
 	print "sin ";
 	print sin($x)*100.0;
-	if ($x > 3)
+	if ($x > 3 &&
+	    (($x / 3) % 2))
 	{
 	    print " cos ";
 	    print cos($x*0.9)*80.0;

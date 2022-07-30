@@ -35,6 +35,9 @@
 
 #define DOUBLE_MIN (-FLT_MAX)
 #define DOUBLE_MAX FLT_MAX
+#define DOUBLE_UNINIT DOUBLE_MIN
+
+#define INT_UNINIT INT_MIN
 
 #ifdef NOACS
 #define T_HLINE '-'
@@ -42,12 +45,14 @@
 #define T_RARR '>'
 #define T_UARR '^'
 #define T_LLCR 'L'
+#define T_BLOCK '#'
 #else
 #define T_HLINE ACS_HLINE
 #define T_VLINE ACS_VLINE
 #define T_RARR ACS_RARROW
 #define T_UARR ACS_UARROW
 #define T_LLCR ACS_LLCORNER
+#define T_BLOCK ACS_BLOCK
 #endif
 
 const char *debug_fn = "/tmp/ttyplot.txt";
@@ -126,7 +131,7 @@ draw_line(const int x,
 {
   if (pc == '#')
   {
-    pc = ACS_BLOCK;
+    pc = T_BLOCK;
   }
   if (y1 == y2)
   {
@@ -178,6 +183,7 @@ struct values_t
   double avg;
   std::string name;
   bool bars;
+  bool did_push_back;
   static size_t max_size;
 
   void init(std::string s)
@@ -189,12 +195,13 @@ struct values_t
   void push_back(const double cval, const size_t plotwidth, const bool b)
   {
     bars = b;
+    did_push_back = true;
     // if this vector contains less elements than the largest other vector,
     // resize this vector to the max size.
     if (max_size > 0 &&
         vec.size() < max_size - 1u)
     {
-      vec.resize(max_size - 1u);
+      vec.resize(max_size - 1u, DOUBLE_UNINIT);
     }
     // add the current value
     vec.push_back(cval);
@@ -259,6 +266,8 @@ struct values_t
     size_t i = 0;
     for(const auto val : vec)
     {
+      if (val == DOUBLE_UNINIT)
+        continue;
       if (val > max)
         max = val;
       if (val < min)
@@ -283,16 +292,26 @@ struct values_t
             const double hardmax,
             const char *unit) const
   {
-    // x screen coordinate
-    int x = 0;
+    if (vec.empty())
+    {
+      return;
+    }
+
     // y screen coordinate of previous row
-    int lasty;
+    int lasty = INT_UNINIT;
     const double mymax = global_max - global_min;
 
-    for(const auto val : vec)
+    for(unsigned x = 0; x < vec.size(); ++x)
     {
+      const auto val = vec[x];
       char pc;
       int y;
+      // skip points which have not been initialized
+      if (val == DOUBLE_UNINIT)
+      {
+        lasty = INT_UNINIT;
+        continue;
+      }
       if (val >= hardmax)
       {
         y = 0;
@@ -312,18 +331,29 @@ struct values_t
       {
         lasty = plotheight;
       }
-      else if (x == 0)
+      else if (lasty == INT_UNINIT)
       {
         lasty = y;
       }
-      draw_line(x++, lasty, y, pc);
+      draw_line(x, lasty, y, pc);
       lasty = y;
     }
 
-    if (! vec.empty())
+    mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), last(), min, max, avg, unit);
+  }
+
+  /// @return last valid value.
+  /// @return 0 if no valid value is found.
+  double last() const
+  {
+    for(auto it = vec.rbegin(); it != vec.rend(); ++it)
     {
-      mvprintw(plotheight + idx + 1, 0, "%s last=%.1f min=%.1f max=%.1f avg=%.1f%s", name.c_str(), vec.back(), min, max, avg, unit);
+      if (*it != DOUBLE_UNINIT)
+      {
+        return *it;
+      }
     }
+    return 0;
   }
 };
 
@@ -477,11 +507,12 @@ main(int argc, char *argv[])
         break;
       case '2':
         op_mode = OperatingMode::TWO;
+	values[one_str].name = '1';
+	values[two_str].name = '2';
         break;
       case 'k':
         op_mode = OperatingMode::KV;
-	values[one_str].name = '1';
-	values[two_str].name = '2';
+        values.clear();
         break;
       case 'C':
         color_str = optarg;
@@ -600,8 +631,15 @@ main(int argc, char *argv[])
     }
     else if (op_mode == OperatingMode::KV)
     {
+      // clear the push_back flag for all values
+      for(auto &p : values)
+      {
+        p.second.did_push_back = false;
+      }
+      // read a line from STDIN
       std::string line;
       std::getline(std::cin, line);
+      // parse line for key/value pairs
       std::istringstream is(line);
       while(is)
       {
@@ -615,6 +653,15 @@ main(int argc, char *argv[])
           break;
         push_back(key, v, plotwidth, bars);
         ++r;
+      }
+      // push the uninitialized value for all values which did not parse a key/value pair
+      for(auto &p : values)
+      {
+        if (p.second.did_push_back == false)
+        {
+          p.second.push_back(DOUBLE_UNINIT, plotwidth, bars);
+          assert(p.second.did_push_back);
+        }
       }
     }
     else
