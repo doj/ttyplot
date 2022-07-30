@@ -89,14 +89,8 @@ ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -
 { while true; do curl -s  http://10.4.7.180:9100/metrics | grep "^node_load1 " | cut -d" " -f2; sleep 1; done } | ttyplot
 ```
 
-
-&nbsp;
-&nbsp;
-
-
-
 ## network/disk throughput examples
-ttyplot supports "two line" plot for in/out or read/write
+`ttyplot` supports "two line" plot for in/out or read/write
 
 ### snmp network throughput for an interface using snmpdelta
 ```
@@ -113,13 +107,8 @@ sar  -n DEV 1 | gawk '{ if($6 ~ /rxkB/) { print iin/1000; print out/1000; iin=0;
 iostat -xmy 1 nvme0n1 | stdbuf -o0 tr -s " " | stdbuf -o0 cut -d " " -f 4,5 | ttyplot -2 -t "nvme0n1 throughput" -u MB/s
 ```
 
-&nbsp;
-&nbsp;
-
-
-
 ## rate calculator for counters
-ttyplot also supports *counter* style metrics, calculating *rate* by measured time difference between samples
+`ttyplot` also supports *counter* style metrics, calculating *rate* by measured time difference between samples
 
 ### snmp network throughput for an interface using snmpget
 ```
@@ -141,31 +130,37 @@ ttyplot also supports *counter* style metrics, calculating *rate* by measured ti
 { while true; do rrdtool lastupdate /var/lib/collectd/rrd/$(hostname)/interface-enp1s0/if_octets.rrd | awk 'END { print ($2)/1000/1000, ($3)/1000/1000 }'; sleep 10; done } | ttyplot -2 -r -t "enp1s0 throughput" -u MB/s
 ```
 
-&nbsp;
-&nbsp;
-
-
-## flags
+## command line arguments
 
 ```
-  ttyplot [-2] [-r] [-c plotchar] [-s scale] [-m max] [-M min] [-t title] [-u unit]
-
-  -2 read two values and draw two plots, the second one is in reverse video
+  ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit]
+  -2 read two values and draw two plots
+  -k key/value mode
   -r rate of a counter (divide value by measured sample interval)
-  -c character to use for plot line, eg @ # % . etc
-  -e character to use for plot error line when value exceeds hardmax (default: e)
-  -E character to use for error symbol displayed when value is less than hardmin (default: v)
-  -s initial scale of the plot (can go above if data input has larger value)
+  -c character(s) for the graph, not used with key/value mode
+  -e character to use for error line when value exceeds hardmax, default: 'e'
+  -E character to use for error symbol displayed when value is less than hardmin, default: 'v'
+  -s initial positive scale of the plot (can go above if data input has larger value)
+  -S initial negative scale of the plot
   -m maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed
   -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed
   -t title of the plot
   -u unit displayed beside vertical bar
 ```
 
-&nbsp;
-&nbsp;
+## data input
 
+By default `ttyplot` reads double values from STDIN.
+Every value is plotted on the screen.
 
+If the -2 mode is enabled, 2 double values are read from STDIN for each update of 2 graphs.
+
+If the -k mode is enabled, `ttyplot` reads any number of key/value pairs from STDIN.
+The key is a string without whitespace, the value is a double.
+The key/value pairs are separated by whitespace.
+After reading a newline the graphs are updated.
+
+See the `test.pl` program for examples how to produce input for `ttyplot`.
 
 ## frequently questioned answers
 ### stdio buffering
@@ -192,7 +187,7 @@ infocmp -I $TERM | sed -e 's/smcup=[^,]*,//g' -e 's/rmcup=[^,]*,//g' | tic -
 ```
 
 ### when running interactively and non-numeric data is entered (eg. some key) ttyplot hangs
-press `ctrl^j` to re-set 
+press `ctrl^j` to re-set
 
 ## legal stuff
 ```

@@ -25,6 +25,8 @@
 #include <map>
 #include <string>
 #include <deque>
+#include <iostream>
+#include <sstream>
 
 #define verstring "https://github.com/doj/ttyplot"
 
@@ -49,19 +51,20 @@
 SCREEN *sp;
 
 void usage() {
-    printf("Usage: ttyplot [-2] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit]\n\n"
-            "  -2 read two values and draw two plots\n"
-            "  -r rate of a counter (divide value by measured sample interval)\n"
-            "  -c character to use for plot line, eg @ # %% . etc\n"
-            "  -e character to use for error line when value exceeds hardmax, default: 'e'\n"
-            "  -E character to use for error symbol displayed when value is less than hardmin, default: 'v'\n"
-            "  -s initial positive scale of the plot (can go above if data input has larger value)\n"
-            "  -S initial negative scale of the plot\n"
-            "  -m maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed\n"
-            "  -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed\n"
-            "  -t title of the plot\n"
-            "  -u unit displayed beside vertical bar\n");
-    exit(EXIT_FAILURE);
+  printf("Usage: ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit]\n\n"
+         "  -2 read two values and draw two plots\n"
+         "  -k key/value mode\n"
+         "  -r rate of a counter (divide value by measured sample interval)\n"
+         "  -c character(s) for the graph, not used with key/value mode\n"
+         "  -e character to use for error line when value exceeds hardmax, default: 'e'\n"
+         "  -E character to use for error symbol displayed when value is less than hardmin, default: 'v'\n"
+         "  -s initial positive scale of the plot (can go above if data input has larger value)\n"
+         "  -S initial negative scale of the plot\n"
+         "  -m maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed\n"
+         "  -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed\n"
+         "  -t title of the plot\n"
+         "  -u unit displayed beside vertical bar\n");
+  exit(EXIT_FAILURE);
 }
 
 void draw_axes(const int screenheight,
@@ -143,7 +146,7 @@ struct values_t
     plotchar = s[0];
   }
 
-  void push_back(double v, const size_t plotwidth)
+  void push_back(const double v, const size_t plotwidth)
   {
     vec.push_back(v);
     if (vec.size() > plotwidth)
@@ -200,17 +203,24 @@ struct values_t
 };
 
 std::map<std::string, values_t> values;
-void values_init(const std::string &s)
+void push_back(const std::string &s, const double v, const size_t plotwidth)
 {
   if (s.empty())
     return;
-  values[s].init(s);
+  auto it = values.find(s);
+  if (it != values.end())
+  {
+    it->second.push_back(v, plotwidth);
+    return;
+  }
+  auto &val = values[s];
+  val.init(s);
+  val.push_back(v, plotwidth);
 }
 
 int main(int argc, char *argv[]) {
   const std::string one_str = "1";
   const std::string two_str = "2";
-  values_init(one_str);
     int plotwidth=0, plotheight=0;
     time_t t1;
     int c;
@@ -222,24 +232,33 @@ int main(int argc, char *argv[]) {
     const char *title = NULL;
     const char *unit = "";
     int rate=0;
-    bool two = false;
+
+    enum class OperatingMode {
+      ONE, TWO, KV
+    } op_mode = OperatingMode::ONE;
 
     opterr=0;
-    while((c=getopt(argc, argv, "2rc:e:E:s:S:m:M:t:u:")) != -1)
+    while((c=getopt(argc, argv, "2krc:e:E:s:S:m:M:t:u:")) != -1)
         switch(c) {
             case 'r':
                 rate=1;
                 break;
             case '2':
-                two = true;
-                values_init(two_str);
-                break;
+              op_mode = OperatingMode::TWO;
+              break;
+          case 'k':
+              op_mode = OperatingMode::KV;
+              break;
             case 'c':
+#if 0
+              //todo
+              if (op_mode = OperatingMode::ONE;
               values[one_str].plotchar = optarg[0];
               if (two)
               {
                 values[two_str].plotchar = optarg[1];
               }
+#endif
                 break;
             case 'e':
                 max_errchar=optarg[0];
@@ -308,32 +327,58 @@ int main(int argc, char *argv[]) {
         endwin();
       }
       int r = 0;
-        if(two)
+      if (op_mode == OperatingMode::ONE)
+      {
+        double v;
+        r = scanf("%lf", &v);
+        if (r == 1)
         {
-          double v1, v2;
-          r = scanf("%lf %lf", &v1, &v2);
-          if (r == 2)
-          {
-            values[one_str].push_back(v1, plotwidth);
-            values[two_str].push_back(v2, plotwidth);
-          }
+          push_back(one_str, v, plotwidth);
         }
-        else
+      }
+      else if (op_mode == OperatingMode::TWO)
+      {
+        double v1, v2;
+        r = scanf("%lf %lf", &v1, &v2);
+        if (r == 2)
         {
-          double v;
-          r = scanf("%lf", &v);
-          if (r == 1)
-          {
-            values[one_str].push_back(v, plotwidth);
-          }
+          push_back(one_str, v1, plotwidth);
+          push_back(two_str, v2, plotwidth);
         }
-        if(r==0) {
-            while(getchar()!='\n');
-            continue;
-        }
-        else if(r<0) {
+      }
+      else if (op_mode == OperatingMode::KV)
+      {
+        std::string line;
+        std::getline(std::cin, line);
+        std::istringstream is(line);
+        while(is)
+        {
+          std::string key;
+          is >> key;
+          if (! is)
             break;
+          double v;
+          is >> v;
+          if (! is)
+            break;
+          push_back(key, v, plotwidth);
+          ++r;
         }
+      }
+      else
+      {
+        assert(false);
+      }
+
+      if(r == 0)
+      {
+        while(getchar()!='\n') {}
+        continue;
+      }
+      else if(r < 0)
+      {
+        break;
+      }
 #if 0
         if(rate) {
             t2=t1;

@@ -20,6 +20,23 @@ if ($ARGV[0] eq '-2')
     }
 }
 
+if ($ARGV[0] eq '-k')
+{
+    my $x = 0;
+    while(1)
+    {
+	$x += 0.2;
+	print "sin ";
+	print sin($x)*100.0;
+	print " cos ";
+	print cos($x*0.9)*80.0;
+	print " misc   ";
+	print cos($x*0.13+2)*50.0;
+	print " \n ";
+	usleep(50000);
+    }
+}
+
 my $x = 0;
 while(1)
 {
