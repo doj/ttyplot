@@ -55,10 +55,11 @@ SCREEN *sp;
 void
 usage()
 {
-  printf("Usage: ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']\n\n"
+  printf("Usage: ttyplot [-2] [-k] [-r] [-b] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']\n\n"
          "  -2 read two values and draw two plots\n"
          "  -k key/value mode\n"
          "  -r rate of a counter (divide value by measured sample interval)\n"
+         "  -b draw bar charts\n"
          "  -c character(s) for the graph, not used with key/value mode\n"
          "  -e character to use for error line when value exceeds hardmax, default: 'e'\n"
          "  -E character to use for error symbol displayed when value is less than hardmin, default: 'v'\n"
@@ -105,10 +106,13 @@ void
 draw_line(const int x,
           int y1,
           int y2,
-          const char pc)
+          int pc)
 {
-  if (y1 == INT_MIN ||
-      y1 == y2)
+  if (pc == '#')
+  {
+    pc = ACS_BLOCK;
+  }
+  if (y1 == y2)
   {
     mvaddch(y2, x, pc);
     return;
@@ -149,6 +153,7 @@ struct values_t
   double min;
   double avg;
   std::string name;
+  bool bars;
 
   void init(std::string s)
   {
@@ -156,8 +161,9 @@ struct values_t
     name = std::move(s);
   }
 
-  void push_back(const double v, const size_t plotwidth)
+  void push_back(const double v, const size_t plotwidth, const bool b)
   {
+    bars = b;
     vec.push_back(v);
     if (vec.size() > plotwidth)
       vec.pop_front();
@@ -258,7 +264,11 @@ struct values_t
         y = plotheight - static_cast<int>((val-global_min) / mymax * plotheight) - 1;
         pc = name[0];
       }
-      if (x == 0)
+      if (bars)
+      {
+        lasty = plotheight;
+      }
+      else if (x == 0)
       {
         lasty = y;
       }
@@ -272,19 +282,19 @@ struct values_t
 
 std::map<std::string, values_t> values;
 void
-push_back(const std::string &s, const double v, const size_t plotwidth)
+push_back(const std::string &s, const double v, const size_t plotwidth, const bool bars)
 {
   if (s.empty())
     return;
   auto it = values.find(s);
   if (it != values.end())
   {
-    it->second.push_back(v, plotwidth);
+    it->second.push_back(v, plotwidth, bars);
     return;
   }
   auto &val = values[s];
   val.init(s);
-  val.push_back(v, plotwidth);
+  val.push_back(v, plotwidth, bars);
 }
 
 int
@@ -400,13 +410,17 @@ main(int argc, char *argv[])
   std::string unit;
   std::string color_str;
   bool rate = false;
+  bool bars = false;
 
   enum class OperatingMode {
     ONE, TWO, KV
   } op_mode = OperatingMode::ONE;
 
-  while((c=getopt(argc, argv, "2krc:C:e:E:s:S:m:M:t:u:")) != -1)
+  while((c=getopt(argc, argv, "2bkrc:C:e:E:s:S:m:M:t:u:")) != -1)
     switch(c) {
+      case 'b':
+        bars = true;
+        break;
       case 'r':
         rate = true;
         break;
@@ -464,6 +478,11 @@ main(int argc, char *argv[])
         break;
     }
 
+  if (op_mode == OperatingMode::ONE)
+  {
+    values[one_str].name = '#';
+  }
+
   if (softmax <= hardmin)
     softmax = hardmin + 1;
   if (hardmax <= hardmin)
@@ -516,7 +535,7 @@ main(int argc, char *argv[])
       r = scanf("%lf", &v);
       if (r == 1)
       {
-        push_back(one_str, v, plotwidth);
+        push_back(one_str, v, plotwidth, bars);
       }
     }
     else if (op_mode == OperatingMode::TWO)
@@ -525,8 +544,8 @@ main(int argc, char *argv[])
       r = scanf("%lf %lf", &v1, &v2);
       if (r == 2)
       {
-        push_back(one_str, v1, plotwidth);
-        push_back(two_str, v2, plotwidth);
+        push_back(one_str, v1, plotwidth, bars);
+        push_back(two_str, v2, plotwidth, bars);
       }
     }
     else if (op_mode == OperatingMode::KV)
@@ -544,7 +563,7 @@ main(int argc, char *argv[])
         is >> v;
         if (! is)
           break;
-        push_back(key, v, plotwidth);
+        push_back(key, v, plotwidth, bars);
         ++r;
       }
     }

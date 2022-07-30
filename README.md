@@ -30,7 +30,7 @@ sar -r 1 | perl -lane 'BEGIN{$|=1} print "@F[5]"' | ttyplot -s 100 -t "memory us
 
 ### memory usage on macOS
 ```
-vm_stat 1 | perl -e '$|=1;<>;<>;while(<>){@_=split(/\s+/);print " ".($_[2]*4096/1024/1024/1024)}' | ttyplot -M 0 -t "MacOS Memory Usage" -u GiB
+vm_stat 1 | perl -e '$|=1;<>;<>;while(<>){@_=split(/\s+/);print " ".($_[2]*4096/1024/1024/1024)}' | ttyplot -M 0 -t "MacOS Memory Usage" -u GiB -b
 ```
 
 ### number of processes in running and io blocked state
@@ -46,7 +46,7 @@ vmstat -n 1 | perl -lane 'BEGIN{$|=1} print "@F[0,1]"' | ttyplot -2 -t "procs in
 ### ping plot with sed
 on macOS change `-u` to `-l`
 ```
-ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -u ms
+ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -u ms -b
 ```
 
 ### wifi signal level in -dBM (higher is worse) using iwconfig
@@ -133,10 +133,11 @@ iostat -xmy 1 nvme0n1 | stdbuf -o0 tr -s " " | stdbuf -o0 cut -d " " -f 4,5 | tt
 ## command line arguments
 
 ```
-  ttyplot [-2] [-k] [-r] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']
+  ttyplot [-2] [-k] [-r] [-b] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']
   -2 read two values and draw two plots
   -k key/value mode
   -r rate of a counter (divide value by measured sample interval)
+  -b draw bar charts
   -c character(s) for the graph, not used with key/value mode
   -e character to use for error line when value exceeds hardmax, default: 'e'
   -E character to use for error symbol displayed when value is less than hardmin, default: 'v'
