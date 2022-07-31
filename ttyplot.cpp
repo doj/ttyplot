@@ -234,14 +234,25 @@ finish(int sig)
 
 struct values_t
 {
+  // values of the graph
   std::deque<double> vec;
+  // previous real value, used in rate mode
   double pval;
+  // maximum value in vec
   double max;
+  // minimum value in vec
   double min;
+  // average value in vec
   double avg;
+  // median value in vec
+  double med;
+  // graph name
   std::string name;
+  // if true plot bars
   bool bars;
+  // if true a value was pushed back in this update cycle
   bool did_push_back;
+  // maximum size of vec of all values_t objects.
   static size_t max_size;
 
   void init(std::string s)
@@ -318,10 +329,17 @@ struct values_t
   /// calculate min, avg, max.
   void update()
   {
+    if (vec.empty())
+    {
+      min = max = avg = med = 0.0;
+      return;
+    }
     double tot = 0;
     min = DOUBLE_MAX;
     max = DOUBLE_MIN;
     size_t i = 0;
+    std::vector<double> med_vec;
+    med_vec.reserve(vec.size());
     for(const auto val : vec)
     {
       if (val == DOUBLE_UNINIT)
@@ -332,8 +350,19 @@ struct values_t
         min = val;
       tot += val;
       ++i;
+      med_vec.push_back(val);
     }
+
+    if (med_vec.empty())
+    {
+      min = max = avg = med = 0.0;
+      return;
+    }
+
     avg = tot / i;
+
+    std::sort(med_vec.begin(), med_vec.end());
+    med = med_vec[med_vec.size() / 2];
   }
 
   /**
@@ -362,14 +391,15 @@ struct values_t
     for(unsigned x = 0; x < vec.size(); ++x)
     {
       const auto val = vec[x];
-      char pc;
-      int y;
       // skip points which have not been initialized
       if (val == DOUBLE_UNINIT)
       {
         lasty = INT_UNINIT;
         continue;
       }
+      char pc;  // plot character
+      int y;    // y coordinate of the value
+      // check for min and max
       if (val >= hardmax)
       {
         y = 0;
@@ -380,6 +410,7 @@ struct values_t
         y = plotheight - 1;
         pc = min_errchar;
       }
+      // regular point
       else
       {
         y = plotheight - static_cast<int>((val-global_min) / mymax * plotheight) - 1;
@@ -387,6 +418,7 @@ struct values_t
           y = 0;
         pc = name[0];
       }
+      // adjust lasty to draw a bar or a point
       if (bars)
       {
         lasty = plotheight;
@@ -395,7 +427,8 @@ struct values_t
       {
         lasty = y;
       }
-      draw_line(x, lasty, y, pc);
+      // draw
+      draw_line(x+1, lasty, y, pc);
       lasty = y;
     }
 
@@ -424,7 +457,7 @@ struct values_t
       mvprintw(y, x, "%s", name.c_str());
     }
     // print details
-    printw(" last=%.1f min=%.1f max=%.1f avg=%.1f", last(), min, max, avg);
+    printw(" last=%.1f min=%.1f max=%.1f avg=%.1f med=%.1f", last(), min, max, avg, med);
   }
 
   /// @return last valid value.
@@ -580,7 +613,7 @@ main(int argc, char *argv[])
     ONE, TWO, KV
   } op_mode = OperatingMode::ONE;
 
-  values[one_str].name = '#';
+  values[one_str].name = '|';
 
   while((c=getopt(argc, argv, "2bkrc:C:e:E:s:S:m:M:t:u:")) != -1)
     switch(c) {
@@ -592,7 +625,6 @@ main(int argc, char *argv[])
         break;
       case '2':
         op_mode = OperatingMode::TWO;
-	values[one_str].name = '|';
 	values[two_str].name = CHAR_REVERSE;
         break;
       case 'k':
@@ -811,13 +843,16 @@ main(int argc, char *argv[])
     }
     else
     {
-      plotheight = screenheight - values.size()/2 - 1;
+      auto vs = values.size() / 2;
+      if (vs == 0)
+        vs = 1;
+      plotheight = screenheight - vs - 1;
     }
     if (plotheight < screenheight / 2)
     {
       plotheight = screenheight / 2;
     }
-    plotwidth=screenwidth;
+    plotwidth = screenwidth - 1;
 
     for(auto &p : values)
     {

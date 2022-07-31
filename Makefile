@@ -29,7 +29,7 @@ ttyplot.1: ttyplot.adoc
 test:	all
 	#perl test.pl -2 | ./ttyplot -2 -t "test title" -u "cm" -b # -c AB # -b
 	#perl test.pl | ./ttyplot -t "test title" -u "cm"
-	perl test.pl -k | ./ttyplot -k -t "key/value" -u "cm" # -C 'red blue green'
+	perl test.pl -k | ./ttyplot -k -t "key/value" -u "cm" -C 'red blue green yl wh'
 	#perl test.pl -r | ./ttyplot -r -k -b -t "test rate"
 	#perl test.pl --rateoverflow | ./ttyplot -r -t "test rate overflow"
 

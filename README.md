@@ -159,7 +159,7 @@ ttyplot also supports *counter* style metrics, calculating *rate* by measured ti
 By default ttyplot reads double values from STDIN.
 Every value is plotted on the screen.
 
-If the -2 mode is enabled, 2 double values are read from STDIN for each update of 2 graphs.
+If the -2 mode is enabled, 2 double values are read from STDIN for each update of the 2 graphs.
 
 If the -k mode is enabled, ttyplot reads any number of key/value pairs from STDIN.
 The key is a string without whitespace, the value is a double.
@@ -186,7 +186,7 @@ This is because of [alternate screen](https://invisible-island.net/xterm/xterm.f
 echo 1 2 3 | TERM=vt100 ttyplot
 ```
 
-you can also permanently fix the terminfo entry (this will make a copy in $HOME/.terminfo/):
+you can also permanently fix the terminfo entry (this will make a copy in ~/.terminfo/):
 
 ```sh
 infocmp -I $TERM | sed -e 's/smcup=[^,]*,//g' -e 's/rmcup=[^,]*,//g' | tic -
@@ -194,6 +194,10 @@ infocmp -I $TERM | sed -e 's/smcup=[^,]*,//g' -e 's/rmcup=[^,]*,//g' | tic -
 
 ### when running interactively and non-numeric data is entered (eg. some key) ttyplot hangs
 press `ctrl^j` to re-set
+
+## bugs and future features
+
+See the [TODO.md](https://github.com/doj/ttyplot/blob/master/TODO.md) file.
 
 ## legal stuff
 ```
