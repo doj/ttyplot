@@ -613,12 +613,13 @@ main(int argc, char *argv[])
     ONE, TWO, KV
   } op_mode = OperatingMode::ONE;
 
-  values[one_str].name = '|';
+  values[one_str].name = '#';
 
   while((c=getopt(argc, argv, "2bkrc:C:e:E:s:S:m:M:t:u:")) != -1)
     switch(c) {
       case 'b':
         bars = true;
+        values[one_str].name = '|';
         break;
       case 'r':
         rate = true;
