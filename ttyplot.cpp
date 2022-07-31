@@ -41,7 +41,7 @@
 
 #define CHAR_REVERSE ' '
 
-#define SCREENWIDTH_FOR_2COLUMN 60
+#define SCREENWIDTH_FOR_2COLUMN 140
 
 #ifdef NOACS
 #define T_HLINE '-'
@@ -441,7 +441,7 @@ struct values_t
     }
     else
     {
-      x = (idx & 1) * SCREENWIDTH_FOR_2COLUMN;
+      x = (idx & 1) * SCREENWIDTH_FOR_2COLUMN / 2;
       y = plotheight + idx/2 + 1;
     }
     // print the detail name
@@ -457,7 +457,7 @@ struct values_t
       mvprintw(y, x, "%s", name.c_str());
     }
     // print details
-    printw(" last=%.1f min=%.1f max=%.1f avg=%.1f med=%.1f", last(), min, max, avg, med);
+    printw(" last=%.1f min=%.1f max=%.1f avg=%.1f med=%.1f ", last(), min, max, avg, med);
   }
 
   /// @return last valid value.
@@ -844,10 +844,7 @@ main(int argc, char *argv[])
     }
     else
     {
-      auto vs = values.size() / 2;
-      if (vs == 0)
-        vs = 1;
-      plotheight = screenheight - vs - 1;
+      plotheight = screenheight - values.size() / 2 - 2;
     }
     if (plotheight < screenheight / 2)
     {
