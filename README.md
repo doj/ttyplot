@@ -53,6 +53,11 @@ ping 8.8.8.8 | sed -u 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -
 ping 8.8.8.8 | sed -l 's/^.*time=//g; s/ ms//g' | ttyplot -t "ping to 8.8.8.8" -u ms -b
 ```
 
+### ping multiple hosts
+```sh
+ping.pl google.com yahoo.com cubic.org | ttyplot -k -u ms -t "ping hosts" -C 'red green blue'
+```
+
 ### Linux: wifi signal level in -dBM (higher is worse) using iwconfig
 ```sh
 { while true; do iwconfig 2>/dev/null | grep "Signal level" | sed -u 's/^.*Signal level=-//g; s/dBm//g'; sleep 1; done } | ttyplot -t "wifi signal" -u "-dBm" -s 90
@@ -165,6 +170,7 @@ If the -k mode is enabled, ttyplot reads any number of key/value pairs from STDI
 The key is a string without whitespace, the value is a double.
 The key/value pairs are separated by whitespace.
 After reading a newline the graphs are updated.
+The graphs are plotted in alphabetical order.
 
 See the [test.pl](https://github.com/doj/ttyplot/blob/master/test.pl) program for examples how to produce input for ttyplot.
 
