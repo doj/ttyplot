@@ -170,7 +170,7 @@ See the [test.pl](https://github.com/doj/ttyplot/blob/master/test.pl) program fo
 
 ## frequently questioned answers
 ### How to disable stdio buffering?
-In unix by default stdio is buffered, you can work around it in [various ways](http://www.perkin.org.uk/posts/how-to-fix-stdio-buffering.html) or read [Output buffering](https://collectd.org/wiki/index.php/Plugin:Exec#Output_buffering).
+In unix by default stdio is buffered. This can be disabled [various ways](http://www.perkin.org.uk/posts/how-to-fix-stdio-buffering.html) or read [Output buffering](https://collectd.org/wiki/index.php/Plugin:Exec#Output_buffering).
 
 ### ttyplot quits when there is no more data
 It's by design, you can work around by adding `sleep`, `read`, `cat`, etc:

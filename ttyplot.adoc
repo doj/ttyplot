@@ -1,0 +1,101 @@
+= ttyplot(1)
+Antoni Sawicki, Dirk Jagdmann
+v1.0.0
+:doctype: manpage
+:manmanual: TTYPLOT
+:mansource: TTYPLOT
+:man-linkstyle: pass:[blue R < >]
+
+== Name
+
+ttyplot – realtime terminal plotting utility
+
+== Synopsis
+
+*ttyplot* [-2] [-k] [-r] [-b] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']
+
+== Description
+
+ttyplot takes data from standard input, most commonly some tool like
+ping(1), snmpget(1), netstat(8), ifconfig(8), sar(1), vmstat(8), etc., and
+plots in text mode on a terminal in real time.
+
+Supports rate calculation for counters, one or two graphs on a single
+display using reverse video for second line, or any number of graphs with
+input as key/value pairs.
+
+== Options
+
+*-2*::
+  read two values and draw two plots
+
+*-k*::
+  key/value mode
+
+*-r*::
+  rate of a counter (divide value by measured sample interval)
+
+*-b*::
+  draw bar charts
+
+*-c*::
+  character(s) for the graph, not used with key/value mode
+
+*-e*::
+  character to use for error line when value exceeds hardmax, default: 'e'
+
+*-E*::
+  character to use for error symbol displayed when value is less than hardmin, default: 'v'
+
+*-s*::
+  initial positive scale of the plot (can go above if data input has larger value)
+
+*-S*::
+  initial negative scale of the plot
+
+*-m*::
+  maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed
+
+*-M*::
+  minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed
+
+*-t*::
+  title of the plot
+
+*-u*::
+  unit displayed beside vertical bar
+
+*-C*::
+  set list of colors:
+  * black,blk,bk
+  * red,rd
+  * green,grn,gr
+  * yellow,yel,yl
+  * blue,blu,bl
+  * magenta,mag,mg
+  * cyan,cya,cy,cn
+  * white,wht,wh
+
+== Bugs
+
+In unix by default stdio is buffered.
+This can be disabled in various ways like
+http://www.perkin.org.uk/posts/how-to-fix-stdio-buffering.html
+or https://collectd.org/wiki/index.php/Plugin:Exec#Output_buffering
+
+ttyplot quits and erases the screen when there is no more data.
+This is by design and can be worked around by adding sleep(1) or read(1), for example:
+
+  { echo 1 2 3; sleep 1000; } | ttyplot
+
+When running interactively and non-numeric data is entered (e.g. some key)
+ttyplot hangs.  Press `Ctrl^j` to reset.
+
+== Resources
+
+*Project web site:* https://github.com/doj/ttyplot
+
+* ttyplot as written by Antoni Sawicki <tenox@google.com>
+* this version is maintained by Dirk Jagdmann <doj@cubic.org>
+
+Free use of this software is granted under the terms of the Apache License 2.0
