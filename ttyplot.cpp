@@ -30,6 +30,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 #define verstring "github.com/doj/ttyplot"
 
@@ -83,17 +84,17 @@ usage()
   printf("Usage: ttyplot [-2] [-k] [-r] [-b] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']\n\n"
          "  -2 read two values and draw two plots\n"
          "  -k key/value mode\n"
-         "  -r rate of a counter (divide value by measured sample interval)\n"
-         "  -b draw bar charts\n"
-         "  -c character(s) for the graph, not used with key/value mode\n"
+         "  -r rate mode (divide value by measured sample interval)\n"
+         "  -b draw bar charts, should be set before -2\n"
+         "  -c character(s) for the graph, not used with key/value mode, should be set after -2\n"
          "  -e character to use for error line when value exceeds hardmax, default: 'e'\n"
          "  -E character to use for error symbol displayed when value is less than hardmin, default: 'v'\n"
-         "  -s initial positive scale of the plot (can go above if data input has larger value)\n"
-         "  -S initial negative scale of the plot\n"
+         "  -s initial maximum value of the plot\n"
+         "  -S initial minimum of the plot\n"
          "  -m maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed\n"
          "  -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed\n"
          "  -t title of the plot\n"
-         "  -u unit displayed beside vertical bar\n"
+         "  -u unit displayed on vertical bar\n"
          "  -C set list of colors: black,blk,bk  red,rd  green,grn,gr  yellow,yel,yl  blue,blu,bl  magenta,mag,mg  cyan,cya,cy,cn  white,wht,wh\n"
          "\nfor more information visit https://%s\n", verstring
          );

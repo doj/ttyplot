@@ -145,17 +145,17 @@ ttyplot also supports *counter* style metrics, calculating *rate* by measured ti
   ttyplot [-2] [-k] [-r] [-b] [-c char] [-e char] [-E char] [-s scale] [-S scale] [-m max] [-M min] [-t title] [-u unit] [-C 'col1 col2 ...']
   -2 read two values and draw two plots
   -k key/value mode
-  -r rate of a counter (divide value by measured sample interval)
-  -b draw bar charts
-  -c character(s) for the graph, not used with key/value mode
+  -r rate mode (divide value by measured sample interval)
+  -b draw bar charts, should be set before -2
+  -c character(s) for the graph, not used with key/value mode, should be set after -2
   -e character to use for error line when value exceeds hardmax, default: 'e'
   -E character to use for error symbol displayed when value is less than hardmin, default: 'v'
-  -s initial positive scale of the plot (can go above if data input has larger value)
-  -S initial negative scale of the plot
+  -s initial maximum value of the plot
+  -S initial minimum value of the plot
   -m maximum value, if exceeded draws error line (see -e), upper-limit of plot scale is fixed
   -M minimum value, if entered less than this, draws error symbol (see -E), lower-limit of the plot scale is fixed
   -t title of the plot
-  -u unit displayed beside vertical bar
+  -u unit displayed on vertical bar
   -C set list of colors: black,blk,bk  red,rd  green,grn,gr  yellow,yel,yl  blue,blu,bl  magenta,mag,mg  cyan,cya,cy,cn  white,wht,wh
 ```
 
